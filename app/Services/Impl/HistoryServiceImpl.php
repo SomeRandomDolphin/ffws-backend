@@ -17,7 +17,7 @@ class HistoryServiceImpl implements HistoryService
         $this->historyRepository = $historyRepository;
     }
 
-    public function getHistory($offsetReq, $limitReq, $daerah): array
+    public function getHistory(int $offsetReq, int $limitReq, ?string $daerah): array
     {
         try {
             return $this->historyRepository->getHistory($offsetReq, $limitReq, $daerah);
@@ -27,7 +27,7 @@ class HistoryServiceImpl implements HistoryService
         }
     }
 
-    public function getHistoryPrediction($offset, $limit, $daerah = null): array
+    public function getHistoryPrediction(int $offset, int $limit, ?string $daerah = null): array
     {
         try {
             return $this->historyRepository->getHistoryPrediction($offset, $limit, $daerah);
@@ -37,7 +37,7 @@ class HistoryServiceImpl implements HistoryService
         }
     }
 
-    public function getChartHistory($daerah, $periode): array
+    public function getChartHistory(?string $daerah, int|string|null $periode): array
     {
         try {
             return $this->historyRepository->getChartHistory($daerah, $periode);

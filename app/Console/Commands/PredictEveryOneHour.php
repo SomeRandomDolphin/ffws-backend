@@ -7,6 +7,7 @@ use App\Models\StationWaterLevel;
 use Exception;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -94,7 +95,7 @@ class PredictEveryOneHour extends Command
         return $rows;
     }
 
-    private function buildPredictPayload($rows): array
+    private function buildPredictPayload(Collection $rows): array
     {
         $history = $rows->map(function (StationWaterLevel $row) {
             return [
@@ -252,7 +253,7 @@ class PredictEveryOneHour extends Command
         }
     }
 
-    private function classify(?float $value, $threshold): ?string
+    private function classify(?float $value, object $threshold): ?string
     {
         if ($value === null) {
             return null;

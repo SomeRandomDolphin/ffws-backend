@@ -14,7 +14,7 @@ class HistoryRepository
     /** A single /predict run only ever produces h1..h5 (5 hours ahead). */
     private const MAX_HORIZON = 5;
 
-    public function getHistory($offsetReq, $limitReq, $daerah): array
+    public function getHistory(int $offsetReq, int $limitReq, ?string $daerah): array
     {
         try {
             $column = $this->resolveStationColumn($daerah);
@@ -44,7 +44,7 @@ class HistoryRepository
         ];
     }
 
-    public function getHistoryPrediction($offset, $limit, $daerah = null): array
+    public function getHistoryPrediction(int $offset, int $limit, ?string $daerah = null): array
     {
         $commonTableExpression = DB::table('station_predictions')
             ->orderBy('station_predictions.id', 'desc');
@@ -110,7 +110,7 @@ class HistoryRepository
      *    historical hour, mirroring the old chart's intent of comparing
      *    actual vs. the nearest-term prediction.
      */
-    public function getChartHistory($daerah, $periode): array
+    public function getChartHistory(?string $daerah, int|string|null $periode): array
     {
         $daerah = $daerah !== null ? strtolower(trim($daerah)) : 'dhompo';
 
