@@ -58,16 +58,37 @@ return [
 
     'asset_url' => env('ASSET_URL', null),
 
-    'flask_url' => env('FLASK_URL', 'http://localhost:8000/api/predict'),
     'notification_url' => env('NOTIFICATION_URL'),
-    'sih_3_token_url' => env('SIH3_TOKEN_URL'),
-    'sih_3_get_pos_url' => env('SIH3_GET_POS_URL'),
-    'sih_3_pos_detail_url' => env('SIH3_POS_DETAIL_URL'),
-    'sih_3_username' => env('SIH3_API_USERNAME'),
-    'sih_3_password' => env('SIH3_API_PASSWORD'),
-    'sih_3_grant_type' => env('SIH3_API_GRANT_TYPE'),
-    'sih_3_client_id' => env('SIH3_API_CLIENT_ID'),
-    'sih_3_client_secret' => env('SIH3_API_CLIENT_SECRET'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Predicted Daerah / Station Model Endpoints
+    |--------------------------------------------------------------------------
+    |
+    | Each daerah is expected to eventually have its own deployed ML model
+    | (its own /predict + /health pair), even though all of them consume
+    | the same 13-station, 30-minute history payload. Add one entry per
+    | station once its model is deployed — no code changes needed beyond
+    | this map. Keys must match the `nama_pos` values in the stasiun_air
+    | table (used for threshold/status lookups) and the station names in
+    | StationWaterLevel::STATION_COLUMN_MAP (used for chart "aktual" data).
+    |
+    */
+
+    'predicted_daerah' => [
+        'dhompo' => [
+            'predict_url' => env('DHOMPO_PREDICT_URL', 'https://www.its.ac.id/tsipil/informasibanjir/ffws-ml/predict'),
+            // ASSUMPTION: inferred sibling path per the ML repo's README
+            // (main.py mounts /health alongside /predict at the app
+            // root). Not independently confirmed — verify this actually
+            // resolves before relying on it in isModelReady().
+            'health_url' => env('DHOMPO_HEALTH_URL', 'https://www.its.ac.id/tsipil/informasibanjir/ffws-ml/health'),
+        ],
+        // 'purwodadi' => [
+        //     'predict_url' => env('PURWODADI_PREDICT_URL', 'http://localhost:8001/predict'),
+        //     'health_url' => env('PURWODADI_HEALTH_URL', 'http://localhost:8001/health'),
+        // ],
+    ],
 
     /*
     |--------------------------------------------------------------------------

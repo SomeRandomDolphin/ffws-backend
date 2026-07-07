@@ -3,283 +3,289 @@
 namespace App\Console\Commands;
 
 use App\Models\NotifikasiTelegram;
+use App\Models\StationWaterLevel;
 use Exception;
-use GuzzleHttp\Client;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+use RuntimeException;
 use Telegram\Bot\Laravel\Facades\Telegram;
+use Throwable;
 
 class PredictEveryOneHour extends Command
 {
     /**
-     * The name and signature of the console command.
+     * Iterates over every daerah configured in config('app.predicted_daerah')
+     * and runs a prediction for each against its own model endpoint. All
+     * daerah share the same 24-row, 13-station history payload — only the
+     * target endpoint and where the result is stored differ.
      *
-     * @var string
+     * Still assumes station_water_levels is kept up to date by something
+     * else (CSV import for now); this command only reads it.
      */
     protected $signature = 'predict:everyonehour';
-    protected $description = 'Predict the next 1 hour of height of water surface to Flask';
+    protected $description = 'Run /predict for every configured daerah using the last 24 rows of station_water_levels.';
 
-    public function __construct()
-    {
-        parent::__construct();
-    }
+    private const MIN_HISTORY_ROWS = 24;
 
-    function getSensorData($previousTimestamp = null)
-    {
-        $flask_url = config('app.flask_url');
-        $sih_3_token_url = config('app.sih_3_token_url');
-        $sih_3_get_pos_url = config('app.sih_3_get_pos_url');
-        $sih_3_pos_detail_url = config('app.sih_3_pos_detail_url');
-        $sih_3_username = config('app.sih_3_username');
-        $sih_3_password = config('app.sih_3_password');
-        $sih_3_grant_type = config('app.sih_3_grant_type');
-        $sih_3_client_id = config('app.sih_3_client_id');
-        $sih_3_client_secret = config('app.sih_3_client_secret');
-
-        if($previousTimestamp === null){
-            $previousTimestamp = now()->addHours(7)->setSecond(0)->setMinute(0);
-            $dateString = now()->addHours(7)->format('Y-m-d');
-        }
-        else{
-            $dateString =$previousTimestamp->format('Y-m-d');
-        }
-
-        $timestamp = Carbon::parse($previousTimestamp);
-        $formattedTimestamp = $timestamp->format('Y-m-d H:i:s');
-
-        $client = new Client();
-        $url = $sih_3_token_url;
-        $data = [
-            'username' => $sih_3_username,
-            'password' => $sih_3_password,
-            'grant_type' => $sih_3_grant_type,
-            'client_id' => $sih_3_client_id,
-            'client_secret' => $sih_3_client_secret,
-        ];
-
-        $response = $client->post($url, [
-            'form_params' => $data,
-        ]);
-
-        $body = $response->getBody()->getContents();
-        $result = json_decode($body, true);
-        $token = $result['access_token'];
-
-        $client1 = new Client([
-            'headers' => [
-                'Authorization' => 'Bearer ' . $token,
-                'Accept' => 'application/json',
-            ],
-        ]);
-
-        $response = $client1->get($sih_3_get_pos_url);
-        if ($response->getStatusCode() == 200) {
-            $data = json_decode($response->getBody(), true);
-            $targetStationNames = ["Puwodadi - S. Welang", "Dhompo - S. Welang", "ARR Cendono", "ARR Lawang"];
-            $filteredData = array_filter($data, function ($station) use ($targetStationNames) {
-                return in_array($station['nama_stasiun'], $targetStationNames);
-            });
-
-            $id_lawang = null;$id_cendono = null;$id_dhompo = null;$id_purwodadi = null;
-
-            foreach ($filteredData as $station) {
-                switch ($station['nama_stasiun']) {
-                    case 'ARR Lawang':
-                        $id_lawang = $station['id'];
-                        break;
-                    case 'ARR Cendono':
-                        $id_cendono = $station['id'];
-                        break;
-                    case 'Dhompo - S. Welang':
-                        $id_dhompo = $station['id'];
-                        break;
-                    case 'Puwodadi - S. Welang':
-                        $id_purwodadi = $station['id'];
-                        break;
-                }
-            }
-
-            $current_hour = Carbon::parse($formattedTimestamp)->hour;
-
-            $responseLawang = $client1->get($sih_3_pos_detail_url.$id_lawang.'/'.$dateString.'/1/1');
-            $responseCendono = $client1->get($sih_3_pos_detail_url.$id_cendono.'/'.$dateString.'/1/1');
-            $responseDhompo = $client1->get($sih_3_pos_detail_url.$id_dhompo.'/'.$dateString.'/1/2');
-            $responsePurwodadi = $client1->get($sih_3_pos_detail_url.$id_purwodadi.'/'.$dateString.'/1/2');
-
-            if ($responseLawang->getStatusCode() == 200) {
-                $data_json_lawang = json_decode($responseLawang->getBody(), true);
-                $dataLawang = array_filter($data_json_lawang['data'], function ($item) use ($current_hour) {
-                    return $item['jam'] == $current_hour;
-                });
-            }
-
-            if ($responseCendono->getStatusCode() == 200) {
-                $data_json_cendono = json_decode($responseCendono->getBody(), true);
-                $dataCendono = array_filter($data_json_cendono['data'], function ($item) use ($current_hour) {
-                    return $item['jam'] == $current_hour;
-                });
-            }
-
-            if ($responseDhompo->getStatusCode() == 200) {
-                $data_json_dhompo = json_decode($responseDhompo->getBody(), true);
-                $dataDhompo = array_filter($data_json_dhompo['data'], function ($item) use ($current_hour) {
-                    return $item['jam'] == $current_hour;
-                });
-            }
-
-            if ($responsePurwodadi->getStatusCode() == 200) {
-                $data_json_purwodadi = json_decode($responsePurwodadi->getBody(), true);
-                $dataPurwodadi = array_filter($data_json_purwodadi['data'], function ($item) use ($current_hour) {
-                    return $item['jam'] == $current_hour;
-                });
-            }
-
-            $curahHujanCendono = $dataCendono[$current_hour]['nilai'];
-            $curahHujanLawang = $dataLawang[$current_hour]['nilai'];
-            $levelMukaAirPurwodadi = $dataPurwodadi[$current_hour]['nilai'];
-            $levelMukaAirDhompo = $dataDhompo[$current_hour]['nilai'];
-
-            return [
-                'curah_hujan_cendono' => (float)$curahHujanCendono,
-                'curah_hujan_lawang' => (float)$curahHujanLawang,
-                'level_muka_air_purwodadi' => (float)$levelMukaAirPurwodadi,
-                'level_muka_air_dhompo' => (float)$levelMukaAirDhompo,
-                'tanggal' => $formattedTimestamp,
-            ];
-        }
-
-
-    }
-
-
-    /**
-     * Execute the console command.
-     * @throws Throwable
-     */
     public function handle(): int
     {
         try {
-            $tanggalObject = DB::table('awlr_arr_per_jam')
-                ->orderBy('tanggal', 'desc')
-                ->select('tanggal')
-                ->first();
-
-            if ($tanggalObject)
-            {
-                $tanggal = $tanggalObject->tanggal;
-                $previousTimestamp = Carbon::parse($tanggal)->addHours(1);
-            }
-            else
-            {
-                $previousTimestamp = null;
+            $rows = $this->loadHistoryRows();
+            if ($rows === null) {
+                return 0; // reason already logged via warn()
             }
 
-            $data = $this->getSensorData($previousTimestamp);
+            $payload = $this->buildPredictPayload($rows);
 
-            if (DB::table('awlr_arr_per_jam')->where('tanggal', $data['tanggal'])->exists()) {
-                DB::table('awlr_arr_per_jam')->where('tanggal', $data['tanggal'])->update($data);
-            } else {
-                DB::table('awlr_arr_per_jam')->insert($data);
+            if ($this->payloadHasNulls($payload)) {
+                $this->warn('Latest history contains missing station readings; /predict would reject this. Skipping until imputation/carry-forward is decided.');
+                return 0;
             }
 
-            $result_bahaya = [];
-
-            $rowCount = DB::table('awlr_arr_per_jam')->count();
-            if ($rowCount >= 5)
-            {
-                $flask_url = config('app.flask_url');
-                $response = Http::post($flask_url);
-
-                if ($response->status() === 200)
-                {
-                    $responseData = $response->json();
-
-
-                    foreach ($responseData as $modelName => $modelData) {
-                        foreach ($modelData['predictions'] as $predictedForTime => $prediction) {
-
-                            $parts = explode('_', $modelName);
-                            $nama_pos = $parts[0];
-
-                            $threshold = DB::table('stasiun_air')
-                                ->select('batas_air_siaga', 'batas_air_awas')
-                                ->where('stasiun_air.nama_pos', '=', $nama_pos)
-                                ->first();
-
-                            if ($prediction['value'] < $threshold->batas_air_siaga)
-                            {
-                                $status = "AMAN";
-                            }
-                            else if ($prediction['value'] < $threshold->batas_air_awas)
-                            {
-                                $status = "SIAGA";
-                            }
-                            else
-                            {
-                                $status = "BAHAYA";
-                                array_push($result_bahaya, '(Status '.$status.') Prediksi '.$nama_pos. ' pada jam '. $prediction . ' : ' . $prediction['value']);
-                            }
-
-                            $existingRecord = DB::table('hasil_prediksi')
-                                ->where('predicted_for_time', $predictedForTime)
-                                ->first();
-
-                            if ($existingRecord)
-                            {
-                                DB::table('hasil_prediksi')
-                                    ->where('predicted_for_time', $predictedForTime)
-                                    ->update([
-                                        'prediksi_level_muka_air_purwodadi_lstm' => $modelName === 'purwodadi_lstm' ? $prediction['value'] : $existingRecord->prediksi_level_muka_air_purwodadi_lstm,
-                                        'prediksi_level_muka_air_purwodadi_gru' => $modelName === 'purwodadi_gru' ? $prediction['value'] : $existingRecord->prediksi_level_muka_air_purwodadi_gru,
-                                        'prediksi_level_muka_air_purwodadi_tcn' => $modelName === 'purwodadi_tcn' ? $prediction['value'] : $existingRecord->prediksi_level_muka_air_purwodadi_tcn,
-                                        'prediksi_level_muka_air_dhompo_lstm' => $modelName === 'dhompo_lstm' ? $prediction['value'] : $existingRecord->prediksi_level_muka_air_dhompo_lstm,
-                                        'prediksi_level_muka_air_dhompo_gru' => $modelName === 'dhompo_gru' ? $prediction['value'] : $existingRecord->prediksi_level_muka_air_dhompo_gru,
-                                        'prediksi_level_muka_air_dhompo_tcn' => $modelName === 'dhompo_tcn' ? $prediction['value'] : $existingRecord->prediksi_level_muka_air_dhompo_tcn,
-                                        'status_muka_air' => $existingRecord->status_muka_air,
-                                    ]);
-                            }
-                            else
-                            {
-                                DB::table('hasil_prediksi')->insert([
-                                    'predicted_for_time' => $predictedForTime,
-                                    'predicted_from_time' => $modelData['predicted_from_time'],
-                                    'status_muka_air' => null,
-                                    'prediksi_level_muka_air_purwodadi_lstm' => $modelName === 'purwodadi_lstm' ? $prediction['value'] : null,
-                                    'prediksi_level_muka_air_purwodadi_gru' => $modelName === 'purwodadi_gru' ? $prediction['value'] : null,
-                                    'prediksi_level_muka_air_purwodadi_tcn' => $modelName === 'purwodadi_tcn' ? $prediction['value'] : null,
-                                    'prediksi_level_muka_air_dhompo_lstm' => $modelName === 'dhompo_lstm' ? $prediction['value'] : null,
-                                    'prediksi_level_muka_air_dhompo_gru' => $modelName === 'dhompo_gru' ? $prediction['value'] : null,
-                                    'prediksi_level_muka_air_dhompo_tcn' => $modelName === 'dhompo_tcn' ? $prediction['value'] : null,
-                                    'status_muka_air' => $status,
-                                ]);
-                            }
-                        }
-                    }
-
-                    $all_chat_id = NotifikasiTelegram::all()->pluck('chat_id')->all();
-
-                    if (!empty($result_bahaya)) {
-                        $resultString = implode(PHP_EOL, $result_bahaya);
-                        foreach ($all_chat_id as $chat_id) {
-                            Telegram::sendMessage([
-                                'chat_id' => $chat_id,
-                                'text' => $resultString,
-                            ]);
-                        }
-                    }
-
-                }
-                $this->info('Prediction executed successfully!');
+            $daerahConfigs = config('app.predicted_daerah', []);
+            if (empty($daerahConfigs)) {
+                $this->warn('No predicted_daerah configured in app.php; nothing to predict.');
+                return 0;
             }
+
+            $anyFailed = false;
+            foreach ($daerahConfigs as $daerah => $endpoints) {
+                $ok = $this->runPredictionFor($daerah, $endpoints, $payload);
+                $anyFailed = $anyFailed || !$ok;
+            }
+
             $this->info('Cron executed successfully!');
-            return 0;
-
+            return $anyFailed ? 1 : 0;
         } catch (Throwable $exception) {
-//            DB::rollBack();
+            Log::error('predict:everyonehour failed: ' . $exception->getMessage(), ['exception' => $exception]);
             throw $exception;
+        }
+    }
+
+    /**
+     * Returns the last 24 rows (oldest first) if there are enough of them
+     * and they're gap-free on 30-minute boundaries, otherwise logs why and
+     * returns null so handle() can skip the run cleanly.
+     */
+    private function loadHistoryRows()
+    {
+        $rows = StationWaterLevel::orderBy('tanggal', 'desc')
+            ->limit(self::MIN_HISTORY_ROWS)
+            ->get()
+            ->sortBy('tanggal')
+            ->values();
+
+        if ($rows->count() < self::MIN_HISTORY_ROWS) {
+            $this->warn("Only {$rows->count()} rows available in station_water_levels; need at least " . self::MIN_HISTORY_ROWS . '. Skipping.');
+            return null;
+        }
+
+        for ($i = 1; $i < $rows->count(); $i++) {
+            $delta = Carbon::parse($rows[$i]->tanggal)->diffInSeconds(Carbon::parse($rows[$i - 1]->tanggal));
+            if ($delta !== 1800) {
+                $this->warn('Latest rows are not on continuous, gap-free 30-minute boundaries; skipping this run.');
+                return null;
+            }
+        }
+
+        return $rows;
+    }
+
+    private function buildPredictPayload($rows): array
+    {
+        $history = $rows->map(function (StationWaterLevel $row) {
+            return [
+                'timestamp' => Carbon::parse($row->tanggal)->format('Y-m-d\TH:i:s'),
+                'readings' => $row->toReadings(),
+            ];
+        })->values()->all();
+
+        return ['history' => $history];
+    }
+
+    private function payloadHasNulls(array $payload): bool
+    {
+        foreach ($payload['history'] as $row) {
+            if (in_array(null, $row['readings'], true)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Runs prediction for a single daerah: health check, /predict call,
+     * store, alert. Returns false (and logs/warns) on any failure so the
+     * caller can keep going with the remaining daerah instead of aborting
+     * the whole run over one bad model.
+     */
+    private function runPredictionFor(string $daerah, array $endpoints, array $payload): bool
+    {
+        if (!$this->isModelReady($endpoints['health_url'] ?? null)) {
+            $this->error("[{$daerah}] ML API is not ready (health check failed); skipping.");
+            return false;
+        }
+
+        $response = Http::timeout(30)->post($endpoints['predict_url'], $payload);
+
+        if ($response->status() === 422) {
+            Log::error("[{$daerah}] /predict rejected the payload (422): " . $response->body());
+            $this->error("[{$daerah}] Payload validation failed on the ML API side. See logs.");
+            return false;
+        }
+
+        if (!$response->successful()) {
+            Log::error("[{$daerah}] /predict call failed with status {$response->status()}: " . $response->body());
+            $this->error("[{$daerah}] Prediction call failed with status {$response->status()}.");
+            return false;
+        }
+
+        try {
+            $stored = $this->storePrediction($daerah, $response->json());
+        } catch (RuntimeException $e) {
+            Log::error("[{$daerah}] Failed to store prediction: " . $e->getMessage());
+            $this->error("[{$daerah}] " . $e->getMessage());
+            return false;
+        }
+
+        $this->notifyIfDangerous($daerah, $stored);
+        $this->info("[{$daerah}] Prediction executed successfully!");
+        return true;
+    }
+
+    private function isModelReady(?string $healthUrl): bool
+    {
+        if (!$healthUrl) {
+            Log::warning('No health_url configured for this daerah; assuming not ready.');
+            return false;
+        }
+
+        try {
+            return Http::timeout(10)->get($healthUrl)->status() === 200;
+        } catch (Exception $e) {
+            Log::warning("Health check failed for {$healthUrl}: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Persists the /predict response for this daerah and returns the row
+     * of values (including computed statuses) so notifyIfDangerous() can
+     * reuse it without re-querying.
+     */
+    private function storePrediction(string $daerah, array $data): array
+    {
+        $predictions = $data['predictions'] ?? [];
+        $shadow = $data['shadow_predictions'] ?? [];
+
+        $sourceTimestamp = $this->toMysqlDatetime($data['timestamp'] ?? null);
+        if ($sourceTimestamp === null) {
+            Log::error("[{$daerah}] /predict response had no usable 'timestamp' field; cannot store this prediction. Raw value: " . json_encode($data['timestamp'] ?? null));
+            throw new RuntimeException("[{$daerah}] Missing/unparseable timestamp in /predict response.");
+        }
+
+        $values = [
+            'daerah' => $daerah,
+            'source_timestamp' => $sourceTimestamp,
+            'prediction_time' => $this->toMysqlDatetime($data['prediction_time'] ?? null) ?? now()->format('Y-m-d H:i:s'),
+            'backend' => $data['backend'] ?? null,
+            'serving_tier' => $data['serving_tier'] ?? null,
+            'models' => isset($data['models']) ? json_encode($data['models']) : null,
+            'degradation' => isset($data['degradation']) ? json_encode($data['degradation']) : null,
+            'quality_flags' => isset($data['quality_flags']) ? json_encode($data['quality_flags']) : null,
+            'h1' => $predictions['h1'] ?? null,
+            'h2' => $predictions['h2'] ?? null,
+            'h3' => $predictions['h3'] ?? null,
+            'h4' => $predictions['h4'] ?? null,
+            'h5' => $predictions['h5'] ?? null,
+            'shadow_h1' => $shadow['h1'] ?? null,
+            'shadow_h2' => $shadow['h2'] ?? null,
+            'shadow_h3' => $shadow['h3'] ?? null,
+            'shadow_h4' => $shadow['h4'] ?? null,
+            'shadow_h5' => $shadow['h5'] ?? null,
+        ];
+
+        $threshold = DB::table('stasiun_air')->where('nama_pos', $daerah)->first();
+        foreach (['h1', 'h2', 'h3', 'h4', 'h5'] as $h) {
+            $values["status_{$h}"] = $threshold ? $this->classify($values[$h], $threshold) : null;
+        }
+
+        $existing = DB::table('station_predictions')
+            ->where('daerah', $daerah)
+            ->where('source_timestamp', $values['source_timestamp'])
+            ->first();
+
+        if ($existing) {
+            DB::table('station_predictions')
+                ->where('daerah', $daerah)
+                ->where('source_timestamp', $values['source_timestamp'])
+                ->update($values);
+        } else {
+            DB::table('station_predictions')->insert($values);
+        }
+
+        return $values;
+    }
+
+    /**
+     * The ML API's timestamps aren't guaranteed to be MySQL-safe as-is —
+     * `prediction_time` in particular has been observed as ISO 8601 with
+     * fractional seconds and a trailing "Z"
+     * (e.g. "2026-07-07T03:33:25.694332Z"), which MySQL's DATETIME
+     * columns reject outright. Always normalize through Carbon before
+     * inserting.
+     */
+    private function toMysqlDatetime(?string $value): ?string
+    {
+        if ($value === null || trim($value) === '') {
+            return null;
+        }
+
+        try {
+            return Carbon::parse($value)->format('Y-m-d H:i:s');
+        } catch (Exception $e) {
+            Log::warning("Could not parse timestamp '{$value}' from ML API response: " . $e->getMessage());
+            return null;
+        }
+    }
+
+    private function classify(?float $value, $threshold): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+        if ($value < $threshold->batas_air_siaga) {
+            return 'AMAN';
+        }
+        if ($value < $threshold->batas_air_awas) {
+            return 'SIAGA';
+        }
+        return 'BAHAYA';
+    }
+
+    private function notifyIfDangerous(string $daerah, array $values): void
+    {
+        $dangerMessages = [];
+        foreach (['h1', 'h2', 'h3', 'h4', 'h5'] as $h) {
+            if (($values["status_{$h}"] ?? null) === 'BAHAYA') {
+                $dangerMessages[] = "(Status BAHAYA) Prediksi {$daerah} {$h}: {$values[$h]}";
+            }
+        }
+
+        if (empty($dangerMessages)) {
+            return;
+        }
+
+        $resultString = implode(PHP_EOL, $dangerMessages);
+        $allChatIds = NotifikasiTelegram::all()->pluck('chat_id')->all();
+        foreach ($allChatIds as $chatId) {
+            Telegram::sendMessage([
+                'chat_id' => $chatId,
+                'text' => $resultString,
+            ]);
         }
     }
 }

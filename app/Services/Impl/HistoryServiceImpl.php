@@ -19,38 +19,29 @@ class HistoryServiceImpl implements HistoryService
 
     public function getHistory($offsetReq, $limitReq, $daerah): array
     {
-        try
-        {
+        try {
             return $this->historyRepository->getHistory($offsetReq, $limitReq, $daerah);
-        }
-        catch (Exception $e)
-        {
+        } catch (Exception $e) {
             Log::error('Error: ' . $e->getMessage() . ' caused by: ' . ($e->getPrevious() ? $e->getPrevious()->getMessage() : 'No previous exception'), ['exception' => $e]);
             throw new RuntimeException($e->getMessage() . ' caused by: ' . $e->getPrevious(), $e->getCode(), $e);
         }
     }
 
-    public function getHistoryPrediction($offset, $limit): array
+    public function getHistoryPrediction($offset, $limit, $daerah = null): array
     {
-        try
-        {
-            return $this->historyRepository->getHistoryPrediction($offset, $limit);
-        }
-        catch (Exception $e)
-        {
+        try {
+            return $this->historyRepository->getHistoryPrediction($offset, $limit, $daerah);
+        } catch (Exception $e) {
             Log::error('Error: ' . $e->getMessage() . ' caused by: ' . ($e->getPrevious() ? $e->getPrevious()->getMessage() : 'No previous exception'), ['exception' => $e]);
             throw new RuntimeException($e->getMessage() . ' caused by: ' . $e->getPrevious(), $e->getCode(), $e);
         }
     }
 
-    public function getChartHistory($model, $daerah, $periode): array
+    public function getChartHistory($daerah, $periode): array
     {
-        try
-        {
-            return $this->historyRepository->getChartHistory($model, $daerah, $periode);
-        }
-        catch (Exception $e)
-        {
+        try {
+            return $this->historyRepository->getChartHistory($daerah, $periode);
+        } catch (Exception $e) {
             Log::error('Error: ' . $e->getMessage() . ' caused by: ' . ($e->getPrevious() ? $e->getPrevious()->getMessage() : 'No previous exception'), ['exception' => $e]);
             throw new RuntimeException($e->getMessage() . ' caused by: ' . $e->getPrevious(), $e->getCode(), $e);
         }

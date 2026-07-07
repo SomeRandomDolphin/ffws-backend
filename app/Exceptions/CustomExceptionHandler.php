@@ -4,6 +4,7 @@ namespace App\Exceptions;
 
 use App\Http\Response\Response;
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 use Throwable;
 
 class CustomExceptionHandler extends ExceptionHandler
@@ -26,8 +27,6 @@ class CustomExceptionHandler extends ExceptionHandler
         }
         $data = null;
         return response()->json(Response::error($message, $statusCode, $data), $statusCode);
-
-        return parent::render($request, $exception);
     }
 
     protected function getStatusCodeFromThrowable(Throwable $exception): int
