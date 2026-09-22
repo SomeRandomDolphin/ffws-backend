@@ -1,26 +1,49 @@
 # FFWS Backend
 
-FastAPI service for water-level forecasting in the Dhompo/Welang River Basin and monitoring data in Surabaya. The service exposes model readiness, single-station forecasts, multi-station forecasts, and the latest Surabaya monitoring snapshot for the FFWS frontend.
+FastAPI service for the Flood Forecasting Warning System (FFWS). The API serves water-level predictions for the Dhompo and Welang River Basin and exposes cached monitoring data for Surabaya.
 
-## Main Endpoints
+## What the API Provides
 
-| Method | Endpoint | Purpose |
-|---|---|---|
-| `GET` | `/health` | API and predictor readiness |
-| `GET` | `/model-info` | Active backend, model references, and input requirements |
-| `POST` | `/predict` | Dhompo water-level forecasts for the next 1 to 5 hours |
-| `POST` | `/predict-multistation` | Hybrid forecasts for 15 Welang monitoring stations |
-| `GET` | `/surabaya/snapshot` | Latest cached Surabaya readings and forecasts |
+- Dhompo water-level predictions for horizons `h1` to `h5`
+- Hybrid predictions for 15 Welang monitoring stations for horizons `h1` to `h6`
+- Model readiness and configuration information
+- Cached Surabaya water-level, rainfall, telemetry, and forecast data
+- OpenAPI documentation through Swagger UI and ReDoc
 
-Interactive API documentation is available at `/docs` and `/redoc` while the service is running.
+## API Reference
+
+| Method | Endpoint | Description |
+| --- | --- | --- |
+| `GET` | `/` | Service information and documentation link |
+| `GET` | `/health` | Predictor readiness and loaded model references |
+| `GET` | `/model-info` | Backend, model requirements, and hybrid predictor status |
+| `POST` | `/predict` | Dhompo forecast for the next 1 to 5 hours |
+| `POST` | `/predict-multistation` | Welang multi-station forecast for the next 1 to 6 hours |
+| `GET` | `/surabaya/snapshot` | Latest cached Surabaya readings and forecast status |
+
+When the API is running, open [`/docs`](http://localhost:8000/docs) for the interactive reference or [`/redoc`](http://localhost:8000/redoc) for the alternative documentation view.
+
+## Project Layout
+
+```text
+api/                    FastAPI application and route handlers
+configs/                Serving, station, and Surabaya source configuration
+models/                 Versioned baseline model files and model notes
+src/dhompo/             Prediction, data, and serving modules
+tests/                  API and predictor tests
+Dockerfile              Production container image
+docker-compose.yml      Local container orchestration
+payload.json            Example request payload for /predict
+```
 
 ## Requirements
 
 - Python 3.10 or newer
 - [`uv`](https://docs.astral.sh/uv/) or `pip`
+- Docker, if you use the container setup
 - MySQL access only when live Surabaya ingestion is enabled
 
-## Local Development
+## Local Setup
 
 Install the locked development environment:
 
@@ -28,82 +51,90 @@ Install the locked development environment:
 uv sync --extra dev
 ```
 
-Copy the environment template:
+Create a local environment file:
 
 ```bash
 cp .env.example .env
 ```
 
-On Windows PowerShell:
+PowerShell:
 
 ```powershell
 Copy-Item .env.example .env
 ```
 
-Start the API:
+Start the development server:
 
 ```bash
 uv run uvicorn api.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-Open `http://localhost:8000/docs` to inspect and call the endpoints.
+The service is available at `http://localhost:8000`.
 
-## Predictor Configuration
+## Predictor Backends
 
-The default `file` backend loads the versioned model artifacts under `models/`. The following environment variables control model serving:
+The API selects its predictor through environment variables.
 
 | Variable | Default | Description |
-|---|---|---|
-| `PREDICTOR_BACKEND` | `file` | Predictor implementation: `file` or `mlflow` |
-| `MLFLOW_TRACKING_URI` | value in `configs/dhompo/serving.yaml` | MLflow tracking URI when the MLflow backend is selected |
-| `MODEL_ALIAS` | `production` | MLflow model alias |
+| --- | --- | --- |
+| `PREDICTOR_BACKEND` | `file` | Selects the local file backend or `mlflow` |
+| `MLFLOW_TRACKING_URI` | `mlruns` from `configs/dhompo/serving.yaml` | MLflow tracking server used by the MLflow backend |
+| `MODEL_ALIAS` | `production` | Model alias used by the MLflow backend |
 
-The optional adaptive Tier-A backend requires the additional dependencies in `requirements-torch.txt`.
+The optional adaptive Tier-A backend requires the packages listed in `requirements-torch.txt` and the corresponding adaptive model artifacts.
 
-### Model artifact compatibility
+### Model files
 
-The repository includes the five baseline Dhompo model files retained from the research repository. A deployment must verify that these pickle files are compatible with its Python and library versions and provide the matching `scaler.pkl` where required. If a model cannot be loaded, the API still starts, `/health` returns `503`, and prediction endpoints remain unavailable until compatible artifacts are supplied.
+The repository includes the five baseline Dhompo model files retained from the research repository. Check that the pickle files match the Python and library versions used at deployment time. The linear models also require a matching `scaler.pkl` from the same training run.
 
-## Surabaya Data Source
+If a model cannot be loaded, the API still starts so that operational endpoints remain inspectable. In that state, `/health` returns `503` and prediction routes report that the predictor is unavailable.
 
-The Surabaya worker reads MySQL in read-only mode and keeps a local SQLite cache at `artifacts/surabaya/live.sqlite3`. Without database credentials, the API remains available and the snapshot endpoint reports that its live source is unavailable.
+## Surabaya Monitoring
 
-Create the local configuration from the supplied example:
+The Surabaya worker reads configured MySQL sources in read-only mode and stores a local SQLite cache at `artifacts/surabaya/live.sqlite3`. The API can start without database credentials. In that case, `/surabaya/snapshot` returns the available cached state and reports the source as unavailable.
+
+Create the local database configuration from the supplied template:
 
 ```powershell
 Copy-Item configs/surabaya/database.example.yaml configs/surabaya/database.local.yaml
 ```
 
-Fill in the local database settings. `database.local.yaml` is excluded from version control and must not be committed.
-
-## Tests
-
-```bash
-uv run pytest
-```
+Edit the local file with the database connection values. Git ignores `database.local.yaml`; do not commit it.
 
 ## Docker
 
-Build and run the service directly:
+Build and run the API image:
 
 ```bash
 docker build -t ffws-backend .
 docker run --rm -p 8000:8000 --env-file .env ffws-backend
 ```
 
-For Docker Compose, first create `.env` and `configs/surabaya/database.local.yaml`, then run:
+For Compose, create `.env` and `configs/surabaya/database.local.yaml` first:
 
 ```bash
 docker compose up --build
 ```
 
+The API listens on port `8000`.
+
+## Testing
+
+Run the full test suite:
+
+```bash
+uv run pytest
+```
+
+Tests that require model artifacts will only pass when compatible model files and their matching preprocessing artifacts are available.
+
 ## Related Repositories
 
-- FFWS Frontend: https://github.com/SomeRandomDolphin/ffws-frontend
-- FFWS Backend: https://github.com/SomeRandomDolphin/ffws-backend
-- FFWS Machine Learning: https://github.com/SomeRandomDolphin/ffws-ml
+- [FFWS Frontend](https://github.com/SomeRandomDolphin/ffws-frontend)
+- [FFWS Backend](https://github.com/SomeRandomDolphin/ffws-backend)
+- [FFWS Machine Learning](https://github.com/SomeRandomDolphin/ffws-ml)
 
-The frontend consumes REST APIs from this service, while this backend integrates forecasting models and hydrological data for monitoring and analytics.
+The frontend consumes REST APIs from this backend. The backend connects hydrological data sources with forecasting models for monitoring and analysis.
 
 ## Project Affiliation and Intended Use
 
