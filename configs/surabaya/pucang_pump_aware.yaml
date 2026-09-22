@@ -1,0 +1,75 @@
+data_path: "../../data/surabaya/ketinggian_30menit_wide.csv"
+timestamp_column: "timestamp"
+cadence_minutes: 30
+
+target_column: "muka_air_lokasi_3_rumah_pompa_pucang"
+min_history_rows: 48
+max_ffill_steps: 2
+train_split: 0.8
+horizons: [1, 2, 3, 4, 5]
+models_output_dir: "../../models/surabaya/pucang_pump_aware"
+target_mode: "persistence_residual"
+
+validation:
+  n_splits: 5
+  gap_steps: 10
+
+deployment:
+  require_persistence_improvement: true
+
+cleaning:
+  target:
+    enabled: true
+    zero_as_outlier: false
+    min_cm: 0.0
+    max_cm: 530.0
+    max_step_change_cm: 100.0
+
+features:
+  include_quality_flags: true
+  min_coverage: 0.05
+  lag_steps: [1, 2, 3, 6, 12, 24]
+  rolling_windows:
+    - steps: 2
+      label: "1h"
+    - steps: 6
+      label: "3h"
+    - steps: 12
+      label: "6h"
+    - steps: 24
+      label: "12h"
+  required_signals:
+    - "status_pompa_lokasi_3_rumah_pompa_pucang"
+    - "rpm_pompa_lokasi_3_rumah_pompa_pucang"
+    - "debit_pompa_lokasi_3_rumah_pompa_pucang"
+  pump_control:
+    level_column: "muka_air_lokasi_3_rumah_pompa_pucang"
+    activity_columns:
+      - "status_pompa_lokasi_3_rumah_pompa_pucang"
+      - "rpm_pompa_lokasi_3_rumah_pompa_pucang"
+      - "debit_pompa_lokasi_3_rumah_pompa_pucang"
+    active_threshold: 0.0
+
+locations:
+  - key: "lokasi_3_rumah_pompa_pucang"
+    name: "Rumah Pompa Pucang"
+    water_level:
+      canonical: "muka_air_lokasi_3_rumah_pompa_pucang"
+      components:
+        - "ketinggian_lokasi_3_a_rumah_pompa_pucang"
+        - "ketinggian_lokasi_3_b_rumah_pompa_pucang"
+      transform:
+        type: "reference_minus_distance"
+        reference_cm: 530.0
+    rainfall:
+      canonical: "curah_hujan_lokasi_3_rumah_pompa_pucang"
+      components:
+        - "curah_hujan_lokasi_3_a_rumah_pompa_pucang"
+        - "curah_hujan_lokasi_3_b_rumah_pompa_pucang"
+    telemetry:
+      - canonical: "status_pompa_lokasi_3_rumah_pompa_pucang"
+        components: ["status_pompa_lokasi_3_rumah_pompa_pucang"]
+      - canonical: "rpm_pompa_lokasi_3_rumah_pompa_pucang"
+        components: ["rpm_pompa_lokasi_3_rumah_pompa_pucang"]
+      - canonical: "debit_pompa_lokasi_3_rumah_pompa_pucang"
+        components: ["debit_pompa_lokasi_3_rumah_pompa_pucang"]

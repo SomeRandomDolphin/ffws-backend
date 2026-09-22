@@ -1,0 +1,102 @@
+water_level:
+  interpretation: water_level
+  unit: cm
+  verification: unverified
+  display_label: "Tinggi air (cm; asumsi belum terverifikasi)"
+  meters_multiplier: 0.01
+  sensor_aggregation: none
+  # Pertahankan nilai nol mentah; maknanya belum dikonfirmasi.
+  zero_value_policy: preserve_raw
+  predictions_enabled: true
+  hazard_status_enabled: false
+
+locations:
+  - key: lokasi_1_hang_tuah
+    name: Hang Tuah
+    database: dbpvwemon
+    coordinates:
+      latitude: -7.29114
+      longitude: 112.79295
+      source: "https://www.google.com/maps/search/?api=1&query=-7.29114,112.79295"
+      verified: false
+    water_level:
+      table: esp3
+      id_column: id
+      timestamp_column: time
+      columns: [distance]
+    # Hanya pemetaan kolom mentah; satuan/akumulasi hujan belum dikonfirmasi.
+    rainfall:
+      table: esp2
+      id_column: id
+      timestamp_column: time
+      columns: [rain1h, rain24h]
+    telemetry:
+      - table: esp2
+        id_column: id
+        timestamp_column: time
+        columns: [windir, windavg, windmax]
+      - table: esp3
+        id_column: id
+        timestamp_column: time
+        columns: [lightlevel]
+      - table: esp1
+        id_column: id
+        timestamp_column: time
+        columns: [flowrate, flowvelocity, rpm]
+
+  - key: lokasi_2_kalibokor
+    name: Kalibokor
+    database: dbpvwemonbaru
+    coordinates:
+      latitude: -7.285063
+      longitude: 112.802715
+      source: "https://www.google.com/maps/search/?api=1&query=-7.285063,112.802715"
+      verified: false
+    water_level:
+      table: esp1
+      id_column: id
+      timestamp_column: waktu
+      columns: [distance1, distance2]
+    rainfall:
+      table: esp1
+      id_column: id
+      timestamp_column: waktu
+      columns: [curah_hujan, curah_hujan_1h, jumlah_tip]
+
+  - key: lokasi_3_rumah_pompa_pucang
+    name: Rumah Pompa Pucang
+    database: dbpvwemonbaru2
+    coordinates:
+      latitude: -7.286892
+      longitude: 112.755656
+      source: "https://www.google.com/maps/search/?api=1&query=-7.286892,112.755656"
+      verified: false
+    water_level:
+      table: esp1
+      id_column: id
+      timestamp_column: waktu
+      columns: [distance1, distance2]
+      measurement: distance_to_surface
+      reference_cm: 530.0
+    rainfall:
+      table: esp1
+      id_column: id
+      timestamp_column: waktu
+      columns: [curah_hujan, curah_hujan_1h, jumlah_tip]
+
+  - key: lokasi_4_pln_menur
+    name: Sebrang Perpustakaan Jawa Timur
+    database: dbpvwemonbaru3
+    coordinates:
+      latitude: -7.288954
+      longitude: 112.768086
+      source: "https://www.google.com/maps/search/?api=1&query=-7.288954,112.768086"
+      verified: false
+    water_level:
+      table: esp1
+      id_column: id
+      timestamp_column: waktu
+      columns: [distance1]
+      measurement: distance_to_surface
+      calibration_required: true
+    rainfall: null

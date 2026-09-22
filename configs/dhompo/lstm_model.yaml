@@ -1,0 +1,9 @@
+hidden_size: 128
+num_layers: 2
+dropout: 0.2
+seq_len: 24          # 24 timesteps × 30 min = 12 hours of history
+
+# Training
+learning_rate: 0.001
+batch_size: 64
+epochs: 100
