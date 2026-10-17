@@ -1,0 +1,33 @@
+# Simulator Fase 2: hujan stokastik + transfer routing pada graf 15 stasiun.
+
+data_sources:
+  clean: "../../data/data-clean.csv"
+  generated: "../../data/Data generated 2023.xlsx"
+
+rainfall:
+  wet_threshold_mm: 0.0
+  laplace_smoothing: 1.0
+  min_gamma_shape: 0.2
+  max_rain_mm: 50.0
+  monthly_multipliers: [1.25, 1.20, 1.10, 0.95, 0.75, 0.55, 0.45, 0.40, 0.50, 0.75, 1.00, 1.20]
+
+routing:
+  timestep_hours: 0.5
+  rain_memory: 0.75
+  min_recession: 0.20
+  max_recession: 0.98
+  default_attenuation: 0.35
+  min_attenuation: 0.05
+  max_attenuation: 0.95
+  rainfall_response_fraction: 0.35
+  process_noise_fraction: 0.05
+  spatial_rain_sigma: 0.12
+  initial_anomaly_fraction: 0.10
+
+generation:
+  start: "2024-01-01 00:00:00"
+  years: 10
+  seed: 42
+  output_path: "../../data/synthetic/hydro_synthetic.csv"
+  parameter_path: "simulator_calibrated.yaml"
+  summary_path: "../../reports/dhompo/tables/fase2_synthetic_summary.csv"

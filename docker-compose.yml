@@ -1,0 +1,13 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file: .env
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./artifacts:/app/artifacts
+      - ./configs/surabaya/database.local.yaml:/app/configs/surabaya/database.local.yaml:ro
+    restart: unless-stopped
+

@@ -1,118 +1,141 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# FFWS Backend
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+FastAPI service for the Flood Forecasting Warning System (FFWS). The API serves water-level predictions for the Dhompo and Welang River Basin and exposes cached monitoring data for Surabaya.
 
-## About Repository
+## What the API Provides
 
-Backend project Repository for Flood Forecasting Warning Sistem Dinas PU Sumber Daya Air Jatim <br>
+- Dhompo water-level predictions for horizons `h1` to `h5`
+- Hybrid predictions for 15 Welang monitoring stations for horizons `h1` to `h6`
+- Model readiness and configuration information
+- Cached Surabaya water-level, rainfall, telemetry, and forecast data
+- OpenAPI documentation through Swagger UI and ReDoc
 
-As of the latest update, the ML prediction backend has moved from the old Flask/TensorFlow/Keras service to a FastAPI-based multi-horizon service (see [Tech Stack](#tech-stack-for-flood-forecasting-warning-system-web-monitoring) below and `MIGRATION_NOTICE.md` for what changed on the API surface consumed by the frontend).
+## API Reference
 
-## Tech Stack For Flood Forecasting Warning System Web Monitoring
-| Web Development                                    | Artificial Intelligence                                  |
-|------------------------------------------------------|-----------------------------------------------------------|
-| [![Laravel][Laravel.com]][Laravel-url]               | [![Python][python.com]][python-url]                        |
-| [![MySQL][mysql.com]][mysql-url]                     | [![PyTorch][PyTorch.com]][PyTorch-url]                     |
-| [![React][React.com]][React-url]                     | [![scikit-learn][sklearn.com]][sklearn-url]                |
-| [![TailwindCSS][TailwindCSS.com]][TailwindCSS-url]   | [![FastAPI][FastAPI.com]][FastAPI-url]                     |
+| Method | Endpoint | Description |
+| --- | --- | --- |
+| `GET` | `/` | Service information and documentation link |
+| `GET` | `/health` | Predictor readiness and loaded model references |
+| `GET` | `/model-info` | Backend, model requirements, and hybrid predictor status |
+| `POST` | `/predict` | Dhompo forecast for the next 1 to 5 hours |
+| `POST` | `/predict-multistation` | Welang multi-station forecast for the next 1 to 6 hours |
+| `GET` | `/surabaya/snapshot` | Latest cached Surabaya readings and forecast status |
 
-> The ML service itself lives in a separate repository and is called by this backend's `predict:everyonehour` scheduled command — see the ML repo's own README for its `/predict`, `/health`, and `/model-info` contract.
+When the API is running, open [`/docs`](http://localhost:8000/docs) for the interactive reference or [`/redoc`](http://localhost:8000/redoc) for the alternative documentation view.
 
-## Requirements for This Back-End Repository
-* [PHP 8.1](https://www.php.net)
-* [MySQL](https://www.mysql.com)
-* [Laravel 9](https://laravel.com)
+## Project Layout
 
-## Getting Started
-1. Clone this repository
+```text
+api/                    FastAPI application and route handlers
+configs/                Serving, station, and Surabaya source configuration
+models/                 Versioned baseline model files and model notes
+src/dhompo/             Prediction, data, and serving modules
+tests/                  API and predictor tests
+Dockerfile              Production container image
+docker-compose.yml      Local container orchestration
+payload.json            Example request payload for /predict
 ```
-git clone https://github.com/SomeRandomDolphin/ffws-backend.git
+
+## Requirements
+
+- Python 3.10 or newer
+- [`uv`](https://docs.astral.sh/uv/) or `pip`
+- Docker, if you use the container setup
+- MySQL access only when live Surabaya ingestion is enabled
+
+## Local Setup
+
+Install the locked development environment:
+
+```bash
+uv sync --extra dev
 ```
-2. Install All Dependencies
-```
-composer install
-```
-3. Copy the .env.example to .env
-```
+
+Create a local environment file:
+
+```bash
 cp .env.example .env
 ```
-4. Generate API Key
-```
-php artisan key:generate
-```
-5. Generate JWT Secret
-```
-php artisan jwt:secret
-```
-6. Adjust your .env with your environment (see [Environment Variables](#environment-variables) below for the ML prediction keys specifically)
-7. Run database migrations
-```
-php artisan migrate
-```
-8. Seed the database (roles, station thresholds, etc. — required before predictions can resolve AMAN/SIAGA/BAHAYA status)
-```
-php artisan db:seed
-```
-9. Start the application
-```
-php artisan serve
-```
-10. Open a new terminal, and start the scheduler (this is what runs `predict:everyonehour` and the Telegram notification poller on their configured intervals)
-```
-php artisan schedule:work
+
+PowerShell:
+
+```powershell
+Copy-Item .env.example .env
 ```
 
-## Environment Variables
+Start the development server:
 
-In addition to the standard Laravel `.env` keys, this project uses the following for ML prediction integration. Each predicted daerah gets its own pair — only `dhompo` is active today (see `config('app.predicted_daerah')` in `config/app.php`):
-
-| Key | Purpose | Default |
-|---|---|---|
-| `DHOMPO_PREDICT_URL` | `/predict` endpoint for the Dhompo model | `https://www.its.ac.id/tsipil/informasibanjir/ffws-ml/predict` |
-| `DHOMPO_HEALTH_URL` | `/health` endpoint checked before each prediction run | `https://www.its.ac.id/tsipil/informasibanjir/ffws-ml/health` |
-
-To add a new predicted station later, add its own `{STATION}_PREDICT_URL` / `{STATION}_HEALTH_URL` pair and a corresponding entry in `config('app.predicted_daerah')` — no other code changes are required.
-
-> The old `FLASK_URL` / `SIH3_*` keys (SIH-3 telemetry polling, single Flask endpoint) have been removed — they're no longer read anywhere in the codebase.
-
-## Database Seeding Notes
-
-`php artisan db:seed` runs, among others, `StasiunAirPosSeeder`, which populates `stasiun_air` with the water-level thresholds (`batas_air_siaga` / `batas_air_awas`) used to classify predictions into AMAN/SIAGA/BAHAYA status.
-
-**The seeded values are placeholders**, mechanically derived from observed min/max ranges in available sample data — they are **not** validated hydrological thresholds. Replace them with real values from the relevant domain expert before relying on flood alerting in production.
-
-If thresholds are updated *after* predictions already exist in `station_predictions`, run:
+```bash
+uv run uvicorn api.main:app --reload --host 0.0.0.0 --port 8000
 ```
-php artisan predict:recalculate-status
+
+The service is available at `http://localhost:8000`.
+
+## Predictor Backends
+
+The API selects its predictor through environment variables.
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `PREDICTOR_BACKEND` | `file` | Selects the local file backend or `mlflow` |
+| `MLFLOW_TRACKING_URI` | `mlruns` from `configs/dhompo/serving.yaml` | MLflow tracking server used by the MLflow backend |
+| `MODEL_ALIAS` | `production` | Model alias used by the MLflow backend |
+
+The optional adaptive Tier-A backend requires the packages listed in `requirements-torch.txt` and the corresponding adaptive model artifacts.
+
+### Model files
+
+The repository includes the five baseline Dhompo model files retained from the research repository. Check that the pickle files match the Python and library versions used at deployment time. The linear models also require a matching `scaler.pkl` from the same training run.
+
+If a model cannot be loaded, the API still starts so that operational endpoints remain inspectable. In that state, `/health` returns `503` and prediction routes report that the predictor is unavailable.
+
+## Surabaya Monitoring
+
+The Surabaya worker reads configured MySQL sources in read-only mode and stores a local SQLite cache at `artifacts/surabaya/live.sqlite3`. The API can start without database credentials. In that case, `/surabaya/snapshot` returns the available cached state and reports the source as unavailable.
+
+Create the local database configuration from the supplied template:
+
+```powershell
+Copy-Item configs/surabaya/database.example.yaml configs/surabaya/database.local.yaml
 ```
-to backfill `status_h1`–`h5` on existing rows — `classify()` only runs once, at prediction-insert time, so existing rows won't pick up new thresholds automatically.
 
-## Web Endpoint Documentation
-https://documenter.getpostman.com/view/56404958/2sBY4Jw2uk
+Edit the local file with the database connection values. Git ignores `database.local.yaml`; do not commit it.
 
-See also `MIGRATION_NOTICE.md` for a summary of breaking changes to `/getHistory`, `/getHistoryPrediction`, and `/getChartData` since the ML backend migration.
+## Docker
 
-## License
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Build and run the API image:
 
-[Laravel.com]: https://img.shields.io/badge/laravel-%23FF2D20.svg?style=for-the-badge&logo=laravel&logoColor=white
-[Laravel-url]: https://laravel.com
-[mysql.com]: https://img.shields.io/badge/mysql-%2300f.svg?style=for-the-badge&logo=mysql&logoColor=white
-[mysql-url]: https://www.mysql.com
-[python.com]: https://img.shields.io/badge/python-3670A0?style=for-the-badge&logo=python&logoColor=ffdd54
-[python-url]: https://www.python.org
-[PyTorch.com]: https://img.shields.io/badge/PyTorch-%23EE4C2C.svg?style=for-the-badge&logo=PyTorch&logoColor=white
-[PyTorch-url]: https://pytorch.org
-[sklearn.com]: https://img.shields.io/badge/scikit--learn-%23F7931E.svg?style=for-the-badge&logo=scikit-learn&logoColor=white
-[sklearn-url]: https://scikit-learn.org
-[FastAPI.com]: https://img.shields.io/badge/FastAPI-%23009688.svg?style=for-the-badge&logo=fastapi&logoColor=white
-[FastAPI-url]: https://fastapi.tiangolo.com
-[React.com]: https://img.shields.io/badge/react-%2320232a.svg?style=for-the-badge&logo=react&logoColor=%2361DAFB
-[React-url]: https://react.dev
-[TailwindCSS.com]: https://img.shields.io/badge/tailwindcss-%2338B2AC.svg?style=for-the-badge&logo=tailwind-css&logoColor=white
-[TailwindCSS-url]: https://tailwindcss.com
+```bash
+docker build -t ffws-backend .
+docker run --rm -p 8000:8000 --env-file .env ffws-backend
+```
+
+For Compose, create `.env` and `configs/surabaya/database.local.yaml` first:
+
+```bash
+docker compose up --build
+```
+
+The API listens on port `8000`.
+
+## Testing
+
+Run the full test suite:
+
+```bash
+uv run pytest
+```
+
+Tests that require model artifacts will only pass when compatible model files and their matching preprocessing artifacts are available.
+
+## Related Repositories
+
+- [FFWS Frontend](https://github.com/SomeRandomDolphin/ffws-frontend)
+- [FFWS Backend](https://github.com/SomeRandomDolphin/ffws-backend)
+- [FFWS Machine Learning](https://github.com/SomeRandomDolphin/ffws-ml)
+
+The frontend consumes REST APIs from this backend. The backend connects hydrological data sources with forecasting models for monitoring and analysis.
+
+## Project Affiliation and Intended Use
+
+This project is funded through a research program at Institut Teknologi Sepuluh Nopember (ITS) and developed by the Department of Civil Engineering. It is intended for government and research use under the Flood Forecasting Warning System initiative.

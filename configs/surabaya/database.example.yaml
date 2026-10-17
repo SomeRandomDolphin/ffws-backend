@@ -1,0 +1,12 @@
+host: ""       
+port: 3306
+username: ""   
+password: ""   
+connect_timeout_seconds: 10
+charset: "utf8mb4"
+
+databases:
+  - dbpvwemon
+  - dbpvwemonbaru
+  - dbpvwemonbaru2
+  - dbpvwemonbaru3
