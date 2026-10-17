@@ -1,8 +1,0 @@
-# Serving defaults for API and MLflow-backed inference
-
-mlflow_uri: "mlruns"
-model_alias: "production"
-
-api:
-  host: "0.0.0.0"
-  port: 8000
