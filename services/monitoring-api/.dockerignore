@@ -8,7 +8,7 @@ mlruns
 .env*
 !.env.example
 configs/surabaya/database.local.yaml
-imports
+imports/source-originals
 exports
 tests
 monitoring_tests

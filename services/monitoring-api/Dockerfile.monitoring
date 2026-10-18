@@ -7,6 +7,7 @@ RUN pip install --no-cache-dir -r requirements-monitoring.txt && \
 COPY api ./api
 COPY monitoring ./monitoring
 COPY configs ./configs
+COPY imports ./imports
 COPY src ./src
 COPY models ./models
 ENV PYTHONPATH=/app:/app/src

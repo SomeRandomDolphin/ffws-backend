@@ -6,6 +6,10 @@ __pycache__/
 configs/surabaya/database.local.yaml
 imports/*
 !imports/.gitkeep
+!imports/history/
+imports/history/*
+!imports/history/welang-2022.csv
+!imports/history/welang-2023.csv
 exports/
 artifacts/
 models/**/*.pkl

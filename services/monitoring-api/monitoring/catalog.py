@@ -1,5 +1,6 @@
 import csv
 import re
+from functools import lru_cache
 from pathlib import Path
 
 import yaml
@@ -9,6 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 def slug(name):
     return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
 
+@lru_cache(maxsize=1)
 def live_config():
     with (ROOT / "configs/surabaya/live_sources.yaml").open(encoding="utf-8") as file:
         return yaml.safe_load(file)

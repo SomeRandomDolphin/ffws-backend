@@ -1,5 +1,7 @@
 """Read-only collectors. Never write into telemetry or Laravel databases."""
 import hashlib
+import csv
+import itertools
 import json
 import math
 import os
@@ -40,15 +42,41 @@ def import_excel(db, path):
         set_source(db, "excel:welang", last_success=now(), error=None)
         return {"duplicate": True, "checksum": checksum}
     source_id = "excel:welang"
-    workbook = openpyxl.load_workbook(path, read_only=True, data_only=True)
+    workbook = None
     count = skipped = 0
     reasons = []
     try:
-        sheet = workbook.worksheets[0]
-        rows = sheet.iter_rows(values_only=True)
-        headers = [str(v or "").strip() for v in next(rows)]
-        normalized = [h.lower() for h in headers]
-        time_index = next((i for i, h in enumerate(normalized) if h in ("datetime", "tanggal", "time")), None)
+        if path.suffix.lower() == ".csv":
+            with path.open("r", encoding="utf-8-sig", newline="") as source_file:
+                sample = source_file.read(4096)
+                source_file.seek(0)
+                try:
+                    dialect = csv.Sniffer().sniff(sample, delimiters=",\t;")
+                except csv.Error:
+                    dialect = csv.excel
+                source_rows = list(csv.reader(source_file, dialect))
+        elif path.suffix.lower() in (".xlsx", ".xlsm"):
+            workbook = openpyxl.load_workbook(path, read_only=True, data_only=True)
+            source_rows = list(workbook.worksheets[0].iter_rows(values_only=True))
+        else:
+            raise ValueError("Format file harus CSV atau XLSX")
+
+        # Supplied historical workbooks can contain a blank/title row before
+        # the actual column headings. Find the first recognizable time header.
+        header_index = None
+        headers = []
+        time_index = None
+        for index, candidate in enumerate(source_rows[:20]):
+            normalized = [slug(str(value or "")) for value in candidate]
+            candidate_time_index = next(
+                (i for i, value in enumerate(normalized)
+                 if value in ("datetime", "tanggal", "time")), None,
+            )
+            if candidate_time_index is not None:
+                header_index = index
+                headers = [str(value or "").strip() for value in candidate]
+                time_index = candidate_time_index
+                break
         if time_index is None:
             raise ValueError("Kolom waktu tidak ditemukan")
         legacy = {"LP": ("welang-purwodadi", "water_level", "m"),
@@ -56,19 +84,33 @@ def import_excel(db, path):
                   "RC": ("welang-rain-cendono", "rainfall", "mm"),
                   "RL": ("welang-rain-lawang", "rainfall", "mm")}
         from monitoring.catalog import stations
-        canonical = {s["name"].lower(): s["id"] for s in stations() if s["region"] == "welang" and s["kind"] == "water_level"}
+        canonical = {slug(s["name"]): s["id"] for s in stations()
+                     if s["region"] == "welang" and s["kind"] == "water_level"}
+        aliases = {
+            "suwoto": "welang-bd-suwoto",
+            "kademungan": "welang-awlr-kademungan",
+            "guyangan": "welang-bd-guyangan",
+            "jl-pantura": "welang-jalan-nasional",
+        }
         mapping = {}
         for i, header in enumerate(headers):
             if header.upper() in legacy:
                 mapping[i] = legacy[header.upper()]
-            elif header.lower() in canonical:
-                mapping[i] = (canonical[header.lower()], "water_level", "m")
+            else:
+                station_id = canonical.get(slug(header)) or aliases.get(slug(header))
+                if station_id:
+                    # These supplied historical files contain water levels
+                    # in centimeters; the API converts them for display.
+                    mapping[i] = (station_id, "water_level", "cm")
         if not mapping:
             raise ValueError("Tidak ada kolom stasiun yang dikenal")
         batch = []
-        for index, row in enumerate(rows, 2):
+        rows = itertools.islice(source_rows, header_index + 1, None)
+        for index, row in enumerate(rows, header_index + 2):
             try:
                 raw_time = row[time_index]
+                if raw_time in (None, ""):
+                    continue
                 if isinstance(raw_time, (int, float)):
                     raw_time = openpyxl.utils.datetime.from_excel(raw_time, workbook.epoch)
                 observed = timestamp(raw_time)
@@ -79,7 +121,8 @@ def import_excel(db, path):
                 for column, (station, metric, unit) in mapping.items():
                     batch.append(record(station, metric, metric, observed.replace(tzinfo=timezone.utc),
                         row[column] if column < len(row) else None, unit, source_id,
-                        station + ":" + observed.isoformat(), "confirmed_by_owner"))
+                        station + ":" + observed.isoformat(),
+                        "unverified" if unit == "cm" else "confirmed_by_owner"))
                 count += 1
                 if len(batch) >= 400:
                     save_readings(db, batch)
@@ -90,7 +133,8 @@ def import_excel(db, path):
                     reasons.append(index)
         save_readings(db, batch)
     finally:
-        workbook.close()
+        if workbook is not None:
+            workbook.close()
     upsert(db, imports, [{"checksum": checksum, "filename": path.name, "finished_at": now(),
         "inserted": count, "skipped": skipped, "details": json.dumps({"invalidRows": reasons})}], ("checksum",))
     set_source(db, source_id, last_success=now(), error=None, detail=json.dumps({"rows": count, "skipped": skipped}))
@@ -104,14 +148,17 @@ def identifier(value):
 def persist_source(db, key, entry, rows):
     spec = entry["spec"]
     batch, invalid = [], 0
+    signals = []
+    for station, kind, cols in entry["targets"]:
+        for col in cols:
+            meta = measurement(station, col) if kind == "water" else {"metric": "rainfall" if kind == "rain" else col, "unit": "unverified", "verification": "unverified"}
+            signals.append((station, col, meta))
     for row in rows:
         try:
             timestamp(row[spec["timestamp_column"]])
-            for station, kind, cols in entry["targets"]:
-                for col in cols:
-                    meta = measurement(station, col) if kind == "water" else {"metric": "rainfall" if kind == "rain" else col, "unit": "unverified", "verification": "unverified"}
-                    batch.append(record(station, col, meta["metric"], row[spec["timestamp_column"]],
-                        row[col], meta["unit"], key, row[spec["id_column"]], meta["verification"]))
+            for station, col, meta in signals:
+                batch.append(record(station, col, meta["metric"], row[spec["timestamp_column"]],
+                    row[col], meta["unit"], key, row[spec["id_column"]], meta["verification"]))
         except (ValueError, TypeError, OverflowError):
             invalid += 1
     save_readings(db, batch)
