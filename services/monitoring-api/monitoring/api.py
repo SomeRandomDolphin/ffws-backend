@@ -9,7 +9,7 @@ from sqlalchemy import select, func, text
 from monitoring.catalog import stations, get_station, live_config, measurement
 from monitoring.queries import snapshot, history, latest_time
 from monitoring.store import engine, initialize, iso, timestamp, now, jobs
-from monitoring.exports import EXPORT_DIR
+from monitoring.exports import EXPORT_DIR, cached_export_or_queue
 
 router = APIRouter()
 _db = None
@@ -60,15 +60,16 @@ def station_snapshot(station: str):
 @router.get("/v1/stations/{station}/history")
 def station_history(station: str, hours: int = Query(24, ge=1, le=744),
                     start: datetime | None = Query(None, alias="from"),
-                    end: datetime | None = Query(None, alias="to")):
+                    end: datetime | None = Query(None, alias="to"),
+                    sensor: str | None = Query(None, min_length=1, max_length=100)):
     require_station(station)
-    until = timestamp(end) if end else latest_time(database(), station)
+    until = timestamp(end) if end else latest_time(database(), station, sensor=sensor)
     if until is None:
         return {"station": station, "from": None, "to": None, "series": []}
     since = timestamp(start) if start else until - timedelta(hours=hours)
     if since > until or until - since > timedelta(days=31):
         raise HTTPException(422, "Rentang grafik harus 0 hingga 31 hari; gunakan ekspor untuk riwayat tahunan")
-    return history(database(), station, since, until)
+    return history(database(), station, since, until, sensor=sensor)
 
 @router.post("/v1/stations/{station}/exports", status_code=202)
 def create_export(station: str):
@@ -76,6 +77,9 @@ def create_export(station: str):
     db = database()
     if latest_time(db, station) is None:
         raise HTTPException(409, "Belum ada data untuk diunduh")
+    cached = cached_export_or_queue(db, station)
+    if cached:
+        return cached
     with db.begin() as conn:
         pending = conn.execute(select(jobs).where(jobs.c.station == station,
             jobs.c.status.in_(["queued", "processing"]), jobs.c.expires_at > now())).mappings().first()
@@ -109,11 +113,11 @@ def export_file(job_id: str):
     return FileResponse(path, filename=job["filename"], media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
 @router.get("/surabaya/snapshot")
-def surabaya_snapshot():
+def surabaya_snapshot(include_history: bool = True):
     """Compatibility endpoint for the existing Next.js integration."""
     result = []
     for loc in live_config()["locations"]:
-        item = snapshot(database(), loc["key"], include_history=True)
+        item = snapshot(database(), loc["key"], include_history=include_history)
         sensors = []
         for column in loc["water_level"]["columns"]:
             series = next((s for s in item["series"] if s["sensor"] == column), None)

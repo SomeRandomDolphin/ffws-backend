@@ -8,7 +8,7 @@ from pathlib import Path
 
 from sqlalchemy import update
 from monitoring.collect import import_excel, sync_surabaya, sync_welang_api
-from monitoring.exports import process_jobs
+from monitoring.exports import process_jobs, refresh_export_caches
 from monitoring.store import engine, initialize, jobs, set_source
 
 log = logging.getLogger("monitoring.worker")
@@ -23,7 +23,10 @@ def main():
     if args.command == "init":
         return
     if args.command == "import-excel":
-        print(import_excel(db, args.path or os.environ["WELANG_EXCEL_PATH"]))
+        path = args.path or os.getenv("WELANG_IMPORT_PATH") or os.getenv("WELANG_EXCEL_PATH", "/app/imports/history")
+        targets = sorted(p for p in Path(path).iterdir() if p.suffix.lower() in (".csv", ".xlsx", ".xlsm")) if Path(path).is_dir() else [Path(path)]
+        for target in targets:
+            print(target.name, import_excel(db, target))
         return
     stop = threading.Event()
     for sig in (signal.SIGINT, signal.SIGTERM):
@@ -31,19 +34,27 @@ def main():
     # Compose runs one worker instance; recover an interrupted export on restart.
     with db.begin() as conn:
         conn.execute(update(jobs).where(jobs.c.status == "processing").values(status="queued"))
+    try:
+        refresh_export_caches(db)
+    except Exception:
+        log.error("Ekspor siap unduh belum dapat dijadwalkan.")
 
     def collect():
         while not stop.is_set():
             started = time.monotonic()
             try:
-                path = Path(os.getenv("WELANG_EXCEL_PATH", "/app/imports/welang.xlsx"))
-                if path.is_file():
+                configured_path = Path(os.getenv("WELANG_IMPORT_PATH") or os.getenv("WELANG_EXCEL_PATH", "/app/imports/history"))
+                paths = sorted(p for p in configured_path.iterdir() if p.suffix.lower() in (".csv", ".xlsx", ".xlsm")) if configured_path.is_dir() else [configured_path]
+                for path in paths:
+                    if not path.is_file():
+                        continue
                     try:
                         import_excel(db, path)
                     except Exception:
-                        set_source(db, "excel:welang", error="Impor Excel gagal; periksa format file dan laporan impor.")
+                        set_source(db, "excel:welang", error="Impor arsip Welang gagal; periksa format file dan laporan impor.")
                 sync_surabaya(db)
                 sync_welang_api(db)
+                refresh_export_caches(db)
             except Exception:
                 log.error("Siklus pengumpulan gagal; akan dicoba ulang tanpa menghapus arsip.")
             stop.wait(max(1, 30 - (time.monotonic() - started)))

@@ -46,6 +46,29 @@ def test_backend_calibration_preserves_raw_archive(tmp_path, monkeypatch, statio
         stored = conn.execute(select(observations.c.value).order_by(observations.c.observed_at)).scalars().all()
     assert stored == [100, None, reference + 1, 0]
 
+def test_light_snapshot_and_selected_sensor_history(tmp_path, monkeypatch):
+    from api.main import app
+    db = engine('sqlite:///' + str(tmp_path / 'archive.db'))
+    initialize(db)
+    station = 'lokasi_3_rumah_pompa_pucang'
+    readings = [record(station, sensor, 'distance', datetime(2026, 10, 18, 12) + timedelta(minutes=index),
+        340 + index / 10, 'cm', 'mysql:test', str(index), 'unverified')
+        for sensor in ('distance1', 'distance2') for index in range(100)]
+    save_readings(db, readings)
+    monkeypatch.setattr(api, '_db', db)
+    with TestClient(app) as client:
+        full = client.get('/surabaya/snapshot').json()
+        light = client.get('/surabaya/snapshot?include_history=false').json()
+        find = lambda payload: next(item for item in payload['stations'] if item['id'] == station)
+        assert len(find(full)['sensors'][0]['history']) == 100
+        assert len(find(light)['sensors'][0]['history']) == 1
+        assert find(full)['sensors'][0]['waterLevelCm'] == find(light)['sensors'][0]['waterLevelCm']
+        selected = client.get(f'/v1/stations/{station}/history?hours=24&sensor=distance2').json()
+        assert [item['sensor'] for item in selected['series']] == ['distance2']
+        assert len(selected['series'][0]['points']) == 100
+        missing = client.get(f'/v1/stations/{station}/history?hours=24&sensor=missing').json()
+        assert missing['series'] == []
+
 def test_excel_idempotency_and_mapping(tmp_path):
     db = engine('sqlite:///' + str(tmp_path / 'archive.db'))
     initialize(db)

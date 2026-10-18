@@ -4,9 +4,12 @@ from sqlalchemy import select, func
 from monitoring.catalog import get_station, measurement
 from monitoring.store import observations as obs, sources, iso, now
 
-def latest_time(db, station):
+def latest_time(db, station, sensor=None):
+    filters = [obs.c.station == station]
+    if sensor is not None:
+        filters.append(obs.c.sensor == sensor)
     with db.connect() as conn:
-        return conn.execute(select(func.max(obs.c.observed_at)).where(obs.c.station == station)).scalar()
+        return conn.execute(select(func.max(obs.c.observed_at)).where(*filters)).scalar()
 
 def preferred_rows(rows):
     # Keep source records intact in storage; choose API over Excel only for display.
@@ -55,20 +58,24 @@ def format_series(rows, station, max_points=2000):
             series["points"] = sorted({p["time"]: p for p in [points[0], *reduced, points[-1]]}.values(), key=lambda p: p["time"])
     return list(groups.values())
 
-def history(db, station, start, end, max_points=2000):
+def history(db, station, start, end, max_points=2000, sensor=None):
+    filters = [obs.c.station == station, obs.c.observed_at >= start, obs.c.observed_at <= end]
+    if sensor is not None:
+        filters.append(obs.c.sensor == sensor)
     with db.connect() as conn:
-        rows = conn.execute(select(obs).where(obs.c.station == station, obs.c.observed_at >= start,
-                                             obs.c.observed_at <= end).order_by(obs.c.observed_at, obs.c.id)).mappings().all()
+        rows = conn.execute(select(obs).where(*filters).order_by(obs.c.observed_at, obs.c.id)).mappings().all()
     return {"station": station, "from": iso(start), "to": iso(end), "series": format_series(rows, station, max_points)}
 
 def latest_series(db, station):
-    rows = []
+    # Include the full index prefix in GROUP BY so MySQL can skip directly
+    # between signals rather than scanning every historical reading.
+    latest = select(obs.c.station, obs.c.sensor, obs.c.metric,
+                    func.max(obs.c.observed_at).label("latest")).where(obs.c.station == station).group_by(
+                        obs.c.station, obs.c.sensor, obs.c.metric).subquery()
     with db.connect() as conn:
-        signals = conn.execute(select(obs.c.sensor, obs.c.metric).where(obs.c.station == station).distinct()).all()
-        for sensor, metric in signals:
-            where = (obs.c.station == station, obs.c.sensor == sensor, obs.c.metric == metric)
-            latest = conn.execute(select(func.max(obs.c.observed_at)).where(*where)).scalar()
-            rows.extend(conn.execute(select(obs).where(*where, obs.c.observed_at == latest)).mappings().all())
+        rows = conn.execute(select(obs).join(latest,
+            (obs.c.station == latest.c.station) & (obs.c.sensor == latest.c.sensor) &
+            (obs.c.metric == latest.c.metric) & (obs.c.observed_at == latest.c.latest))).mappings().all()
     return format_series(rows, station)
 
 def snapshot(db, station_id, include_history=False):
@@ -78,7 +85,7 @@ def snapshot(db, station_id, include_history=False):
     latest = latest_time(db, station_id)
     data = history(db, station_id, latest - timedelta(hours=24), latest) if latest and include_history else {"series": latest_series(db, station_id) if latest else []}
     with db.connect() as conn:
-        source_names = conn.execute(select(obs.c.source).where(obs.c.station == station_id).distinct()).scalars().all()
+        source_names = conn.execute(select(obs.c.source).where(obs.c.station == station_id).group_by(obs.c.station, obs.c.source)).scalars().all()
         states = conn.execute(select(sources).where(sources.c.id.in_(source_names))).mappings().all() if source_names else []
     source_states = [{"id": s["id"], "lastSuccess": iso(s["last_success"]), "error": s["error"]} for s in states]
     state = "unavailable" if latest is None else "historical" if all(s.startswith("excel:") for s in source_names) else "stale" if now() - latest > timedelta(minutes=10) else "live"

@@ -21,6 +21,7 @@ observations = Table(
     Column("verification", String(40), nullable=False),
     UniqueConstraint("source", "record_key", "sensor", "metric", name="uq_source_record"),
     Index("ix_station_time", "station", "observed_at"),
+    Index("ix_station_id", "station", "id"),
     Index("ix_station_source", "station", "source"),
     Index("ix_signal_time", "station", "sensor", "metric", "observed_at"),
 )
@@ -40,6 +41,14 @@ imports = Table(
     "import_batches", metadata, Column("checksum", String(64), primary_key=True),
     Column("filename", String(180)), Column("finished_at", DateTime),
     Column("inserted", Integer), Column("skipped", Integer), Column("details", Text),
+)
+export_cache = Table(
+    "export_cache", metadata,
+    Column("station", String(80), primary_key=True),
+    Column("fingerprint", String(80), nullable=False),
+    Column("job_id", String(40)),
+    Column("pending_job_id", String(40)),
+    Column("updated_at", DateTime, nullable=False),
 )
 
 def now():
