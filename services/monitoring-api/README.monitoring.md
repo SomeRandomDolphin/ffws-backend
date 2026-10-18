@@ -1,6 +1,6 @@
 # Monitoring archive
 
-Laravel remains at the backend repository root. FastAPI is restored from the migration branch into this separate service. See frontend `DEPLOYMENT.md` for combined deployment, domain routing, backups and rollback.
+Laravel remains at the backend repository root. FastAPI is restored from the migration branch into this separate service.
 
 ## Components
 
@@ -10,11 +10,22 @@ Run `python -m monitoring.worker init` once before the API/worker. `ARCHIVE_DATA
 
 Surabaya source credentials remain read-only in `configs/surabaya/database.local.yaml`. An initial tail makes current readings available immediately; separate bounded batches backfill up to 366 days before each source's last observation. `source_state.detail` reports `backfill_complete`, historical cursor and skipped rows. Cursor persistence, deduplication and independent source errors survive restarts. Backfill progress must finish before a full-year source history can be expected.
 
-## Excel
+## Data historis Welang sementara
 
-Place the operator-supplied Welang file at `/app/imports/welang.xlsx`. The worker imports changed checksums automatically. Manual import: `python -m monitoring.worker import-excel --path /app/imports/welang.xlsx`.
+Dua file CSV sementara dengan header dan urutan stasiun yang sama disimpan di `imports/history/` dan dimuat ke arsip Welang oleh worker:
 
-Time headers accept DateTime/Datetime/tanggal/Time. LP/LD map to Purwodadi/Dhompo water level in meters; RC/RL map to Cendono/Lawang rainfall in mm, confirmed by the owner. Canonical station-name headers are also accepted for water level in meters. Timestamps without a timezone are WIB. Nulls remain null; invalid rows are reported. Import retries and unchanged files are idempotent. Corrected files replace matching Excel observations without deleting unrelated dates. Rainfall gauges are separate from the water-level stations.
+- `welang-2022.csv`: 1 Oktober–5 Desember 2022 (3.135 baris waktu)
+- `welang-2023.csv`: 1 Januari–14 Maret 2023 (3.481 baris waktu)
+
+Keduanya memakai kolom `Datetime` lalu 15 stasiun dengan nama kanonis. Data sumber XLSX memiliki satu kolom `Curah hujan` tanpa identitas pos yang jelas; kolom itu tidak dimasukkan. Nilai muka air disimpan sebagai cm mentah dan disajikan sebagai meter pada endpoint grafik. Timestamp tanpa offset dianggap WIB. Data ini belum diverifikasi dan tidak mengisi rentang waktu yang kosong.
+
+File dimuat otomatis dari `/app/imports/history` saat worker berjalan. Impor manual menerima direktori atau satu file CSV/XLSX: `python -m monitoring.worker import-excel --path imports/history`. `Dockerfile.monitoring` menyertakan CSV tersebut di image. Pada stack gabungan, Compose memasang direktori host `services/monitoring-api/imports/history` ke `/app/imports/history`; isi checkout host itulah yang dibaca worker. Folder `source-originals` tidak dipasang.
+
+## Excel dan sumber berikutnya
+
+File tambahan dapat diletakkan di `/app/imports/history` atau diarahkan dengan `WELANG_IMPORT_PATH`. Script frontend `initialize-stack.ps1 -WelangExcelPath` menyalin Excel ke `imports/history/welang.xlsx`. File lama di `imports/welang.xlsx` tidak dibaca otomatis oleh konfigurasi default; salin ke `history` jika masih diperlukan. `WELANG_IMPORT_PATH` dapat menunjuk direktori atau satu file di dalam container; setelah mengubah environment, buat ulang worker dengan Compose `up -d`. Worker memeriksa CSV/XLSX/XLSM berdasarkan checksum dan mengimpor file yang berubah. CSV historis tersebut menjadi baseline sementara.
+
+Time headers accept DateTime/Datetime/tanggal/Time. LP/LD map to Purwodadi/Dhompo water level in meters; RC/RL map to Cendono/Lawang rainfall in mm. Canonical station-name headers are accepted. Timestamps without a timezone are WIB. Nulls remain null; invalid rows are reported. Import retries and unchanged files are idempotent. Corrected files replace matching observations without deleting unrelated dates. Rainfall gauges are separate from water-level stations.
 
 ## Future Welang provider
 
@@ -35,7 +46,7 @@ Return bounded pages with stable IDs within each station and an unchanged cursor
 - `GET /v1/stations/{id}/history?hours=6|24|168`, or ISO `from`/`to`: up to 31 days. Chart extrema are retained during downsampling.
 - `POST /v1/stations/{id}/exports`: 202 job ID; 409 for an empty station, 429 when the queue is full.
 - `GET /v1/exports/{id}` and `/file`: job status/download. Files expire after 24 hours.
-- `GET /surabaya/snapshot`: compatibility endpoint for existing frontend routes.
+- `GET /surabaya/snapshot`: compatibility endpoint; use `?include_history=false` for lightweight map readings. Full history remains the default for older consumers. Drawer charts fetch `/v1/stations/{station}/history?hours=24&sensor={sensor}` only when opened.
 - `/predict`, `/predict-multistation`, `/model-info`: preserved, disabled by default.
 
 Monthly Excel sheets cover 12 calendar months ending at the latest data month. Rows retain original timestamps, values, sensor, metric, unit and source identity. Empty months are labeled. Dates/numbers are typed and workbook generation streams to disk. Sheets exceeding Excel's row limit continue in another part for the same month. File generation never uses chart samples or inferred zero values.
