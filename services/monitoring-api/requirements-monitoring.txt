@@ -1,0 +1,8 @@
+fastapi>=0.111,<1
+uvicorn>=0.29,<1
+SQLAlchemy>=2.0,<2.1
+PyMySQL>=1.1,<2
+cryptography>=43,<47
+PyYAML>=6,<7
+openpyxl>=3.1,<4
+XlsxWriter>=3.2,<4

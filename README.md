@@ -9,6 +9,18 @@
 
 ## About Repository
 
+### Combined monitoring deployment
+
+Laravel remains active at this repository root. The monitoring FastAPI service,
+archive worker, and monitoring-only requirements live in
+[services/monitoring-api](services/monitoring-api/README.monitoring.md).
+The frontend repository supplies the combined production Compose file and
+`DEPLOYMENT.md`. Preserve the existing Laravel `.env` and database when deploying.
+Prediction and Telegram jobs are disabled by default using the flags in
+`config/monitoring.php`; auth, roles, contacts, station configuration, Excel
+import and history endpoints retain their existing routes.
+
+
 Backend project Repository for Flood Forecasting Warning Sistem Dinas PU Sumber Daya Air Jatim <br>
 
 As of the latest update, the ML prediction backend has moved from the old Flask/TensorFlow/Keras service to a FastAPI-based multi-horizon service (see [Tech Stack](#tech-stack-for-flood-forecasting-warning-system-web-monitoring) below and `MIGRATION_NOTICE.md` for what changed on the API surface consumed by the frontend).

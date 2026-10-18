@@ -1,0 +1,177 @@
+version: 1
+provenance:
+  rainfall: Data generated 2023.xlsx
+  routing: data-clean.csv + Data generated 2023.xlsx
+  ground_truth: false
+rainfall:
+  p_wet_after_dry: 0.028368794326241134
+  p_wet_after_wet: 0.6182572614107884
+  gamma_shape: 0.36307554869748665
+  gamma_scale: 9.272249835412902
+  monthly_multipliers:
+  - 1.25
+  - 1.2
+  - 1.1
+  - 0.95
+  - 0.75
+  - 0.55
+  - 0.45
+  - 0.4
+  - 0.5
+  - 0.75
+  - 1.0
+  - 1.2
+  max_rain_mm: 50.0
+routing:
+  timestep_hours: 0.5
+  rain_memory: 0.75
+  spatial_rain_sigma: 0.12
+  initial_anomaly_fraction: 0.1
+  stations:
+    Bd. Sentono:
+      baseline_m: 681.568
+      recession: 0.9466579425261128
+      rainfall_gain: 0.00397033321888816
+      noise_std_m: 0.0024035833605699727
+      observed_std_m: 0.16947650940054024
+    Bd. Suwoto:
+      baseline_m: 505.745
+      recession: 0.98
+      rainfall_gain: 0.007044710896797792
+      noise_std_m: 0.0017130163834248862
+      observed_std_m: 0.3007085165661685
+    Krajan Timur:
+      baseline_m: 336.4185
+      recession: 0.9344565992850395
+      rainfall_gain: 0.006491942806529555
+      noise_std_m: 0.004965934803031701
+      observed_std_m: 0.27711321579871856
+    Purwodadi:
+      baseline_m: 289.641
+      recession: 0.98
+      rainfall_gain: 0.02377566546892391
+      noise_std_m: 0.007411368809318053
+      observed_std_m: 1.0148812631592088
+    Bd. Baong:
+      baseline_m: 170.526
+      recession: 0.2
+      rainfall_gain: 0.039480792804476326
+      noise_std_m: 0.08147285487481909
+      observed_std_m: 1.6852658414253603
+    Bd. Lecari:
+      baseline_m: 174.625
+      recession: 0.98
+      rainfall_gain: 0.06740614083553344
+      noise_std_m: 0.0010431699810971255
+      observed_std_m: 2.8772792688081976
+    Bd. Bakalan:
+      baseline_m: 140.198
+      recession: 0.9558021530227124
+      rainfall_gain: 0.010140478946299266
+      noise_std_m: 0.005743784259588296
+      observed_std_m: 0.43285358702203136
+    AWLR Kademungan:
+      baseline_m: 131.89
+      recession: 0.48564704904960004
+      rainfall_gain: 0.03681177813939328
+      noise_std_m: 0.049553466986758825
+      observed_std_m: 1.5713370440072438
+    Bd. Domas:
+      baseline_m: 57.289
+      recession: 0.44692831796519217
+      rainfall_gain: 0.0254493426153245
+      noise_std_m: 0.04555374584960678
+      observed_std_m: 1.0863233676369939
+    Bd Guyangan:
+      baseline_m: 33.69
+      recession: 0.98
+      rainfall_gain: 0.004314998686099921
+      noise_std_m: 0.0014018408754719997
+      observed_std_m: 0.18418880105809368
+    Bd. Grinting:
+      baseline_m: 29.01
+      recession: 0.7676900953353183
+      rainfall_gain: 0.02037870039530111
+      noise_std_m: 0.02097219009208672
+      observed_std_m: 0.8698793825879956
+    Sidogiri:
+      baseline_m: 25.492
+      recession: 0.98
+      rainfall_gain: 0.0069473208415770414
+      noise_std_m: 0.001601073488678263
+      observed_std_m: 0.29655135249474557
+    Klosod:
+      baseline_m: 24.93
+      recession: 0.98
+      rainfall_gain: 0.005977207649454321
+      noise_std_m: 0.001361119818227334
+      observed_std_m: 0.2551413779509929
+    Dhompo:
+      baseline_m: 9.314
+      recession: 0.9393010415619645
+      rainfall_gain: 0.021953640520138977
+      noise_std_m: 0.012387668316524138
+      observed_std_m: 0.9371068267739319
+    Jalan Nasional:
+      baseline_m: 3.5665
+      recession: 0.98
+      rainfall_gain: 0.018971878662535992
+      noise_std_m: 0.004640671031684549
+      observed_std_m: 0.8098281920522502
+  reaches:
+  - upstream: Bd. Sentono
+    downstream: Purwodadi
+    lag_steps: 3
+    attenuation: 0.95
+  - upstream: Bd. Suwoto
+    downstream: Krajan Timur
+    lag_steps: 3
+    attenuation: 0.6738569409298468
+  - upstream: Krajan Timur
+    downstream: Purwodadi
+    lag_steps: 2
+    attenuation: 0.95
+  - upstream: Purwodadi
+    downstream: Bd. Baong
+    lag_steps: 2
+    attenuation: 0.686581338546522
+  - upstream: Bd. Baong
+    downstream: Bd. Bakalan
+    lag_steps: 1
+    attenuation: 0.05
+  - upstream: Bd. Bakalan
+    downstream: AWLR Kademungan
+    lag_steps: 1
+    attenuation: 0.05
+  - upstream: AWLR Kademungan
+    downstream: Bd. Domas
+    lag_steps: 2
+    attenuation: 0.05
+  - upstream: Bd. Domas
+    downstream: Bd. Grinting
+    lag_steps: 1
+    attenuation: 0.4397126088984608
+  - upstream: Bd. Grinting
+    downstream: Dhompo
+    lag_steps: 1
+    attenuation: 0.95
+  - upstream: Bd. Lecari
+    downstream: Bd Guyangan
+    lag_steps: 3
+    attenuation: 0.05
+  - upstream: Bd Guyangan
+    downstream: Sidogiri
+    lag_steps: 1
+    attenuation: 0.95
+  - upstream: Sidogiri
+    downstream: Klosod
+    lag_steps: 1
+    attenuation: 0.6451508891356158
+  - upstream: Klosod
+    downstream: Dhompo
+    lag_steps: 2
+    attenuation: 0.95
+  - upstream: Dhompo
+    downstream: Jalan Nasional
+    lag_steps: 1
+    attenuation: 0.8276339413857088

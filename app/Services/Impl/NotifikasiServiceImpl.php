@@ -18,6 +18,9 @@ class NotifikasiServiceImpl implements NotifikasiService
 
     public function handleStart($request)
     {
+        if (!config('monitoring.telegram_enabled')) {
+            abort(503, 'Telegram belum diaktifkan.');
+        }
         $newUser = [];
         $updates = Telegram::getUpdates();
 

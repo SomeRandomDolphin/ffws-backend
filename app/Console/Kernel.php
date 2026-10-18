@@ -22,8 +22,12 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
-        $schedule->command('predict:everyonehour')->hourlyAt(1);
-        $schedule->command('polling:notificationtelegram')->everyFiveMinutes();
+        if (config('monitoring.predictions_enabled')) {
+            $schedule->command('predict:everyonehour')->hourlyAt(1);
+        }
+        if (config('monitoring.telegram_enabled')) {
+            $schedule->command('polling:notificationtelegram')->everyFiveMinutes();
+        }
     }
 
     /**

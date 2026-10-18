@@ -33,6 +33,10 @@ class PredictEveryOneHour extends Command
 
     public function handle(): int
     {
+        if (!config('monitoring.predictions_enabled')) {
+            $this->info('Predictions disabled by PREDICTIONS_ENABLED.');
+            return 0;
+        }
         try {
             $rows = $this->loadHistoryRows();
             if ($rows === null) {
@@ -269,6 +273,9 @@ class PredictEveryOneHour extends Command
 
     private function notifyIfDangerous(string $daerah, array $values): void
     {
+        if (!config('monitoring.telegram_enabled')) {
+            return;
+        }
         $dangerMessages = [];
         foreach (['h1', 'h2', 'h3', 'h4', 'h5'] as $h) {
             if (($values["status_{$h}"] ?? null) === 'BAHAYA') {

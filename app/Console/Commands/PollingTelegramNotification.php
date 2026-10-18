@@ -33,6 +33,9 @@ class PollingTelegramNotification extends Command
      */
     public function handle()
     {
+        if (!config('monitoring.telegram_enabled')) {
+            return 0;
+        }
         $notification_url = config('app.notification_url');
         $response = Http::post($notification_url);
 

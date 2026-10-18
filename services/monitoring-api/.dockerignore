@@ -1,0 +1,16 @@
+.git
+.venv
+__pycache__
+.pytest_cache
+.ruff_cache
+artifacts
+mlruns
+.env*
+!.env.example
+configs/surabaya/database.local.yaml
+imports
+exports
+tests
+monitoring_tests
+models/**/*.pkl
+docs

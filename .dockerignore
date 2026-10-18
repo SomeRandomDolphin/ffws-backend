@@ -1,0 +1,12 @@
+.git
+.env
+.env.*
+.venv
+vendor
+node_modules
+artifacts
+configs/surabaya/database.local.yaml
+services/monitoring-api/imports
+services/monitoring-api/configs/surabaya/database.local.yaml
+**/__pycache__
+storage/logs
