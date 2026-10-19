@@ -1,0 +1,436 @@
+{
+  "history": [
+    {
+      "timestamp": "2022-11-21T00:00:00",
+      "readings": {
+        "Bd. Suwoto": 1.067,
+        "Krajan Timur": 0.225,
+        "Purwodadi": 0.42,
+        "Bd. Lecari": 0.446,
+        "Bd. Bakalan": 1.184,
+        "Bd. Baong": 1.315,
+        "AWLR Kademungan": 1.271,
+        "Bd Guyangan": 0.322,
+        "Sidogiri": 0.748,
+        "Bd. Domas": 0.351,
+        "Klosod": 0.672,
+        "Bd. Grinting": 1.058,
+        "Dhompo": 0.566
+      }
+    },
+    {
+      "timestamp": "2022-11-21T00:30:00",
+      "readings": {
+        "Bd. Suwoto": 0.539,
+        "Krajan Timur": 0.85,
+        "Purwodadi": 0.636,
+        "Bd. Lecari": 0.442,
+        "Bd. Bakalan": 1.007,
+        "Bd. Baong": 1.514,
+        "AWLR Kademungan": 0.208,
+        "Bd Guyangan": 1.328,
+        "Sidogiri": 1.108,
+        "Bd. Domas": 0.878,
+        "Klosod": 0.564,
+        "Bd. Grinting": 1.736,
+        "Dhompo": 1.341
+      }
+    },
+    {
+      "timestamp": "2022-11-21T01:00:00",
+      "readings": {
+        "Bd. Suwoto": 0.411,
+        "Krajan Timur": 0.297,
+        "Purwodadi": 0.878,
+        "Bd. Lecari": 0.864,
+        "Bd. Bakalan": 1.269,
+        "Bd. Baong": 1.395,
+        "AWLR Kademungan": 0.843,
+        "Bd Guyangan": 1.562,
+        "Sidogiri": 0.692,
+        "Bd. Domas": 1.238,
+        "Klosod": 1.71,
+        "Bd. Grinting": 1.228,
+        "Dhompo": 2.654
+      }
+    },
+    {
+      "timestamp": "2022-11-21T01:30:00",
+      "readings": {
+        "Bd. Suwoto": 0.993,
+        "Krajan Timur": 0.905,
+        "Purwodadi": 0.237,
+        "Bd. Lecari": 0.451,
+        "Bd. Bakalan": 0.647,
+        "Bd. Baong": 0.42,
+        "AWLR Kademungan": 0.479,
+        "Bd Guyangan": 0.341,
+        "Sidogiri": 0.561,
+        "Bd. Domas": 1.381,
+        "Klosod": 0.92,
+        "Bd. Grinting": 0.855,
+        "Dhompo": 1.024
+      }
+    },
+    {
+      "timestamp": "2022-11-21T02:00:00",
+      "readings": {
+        "Bd. Suwoto": 0.62,
+        "Krajan Timur": 1.137,
+        "Purwodadi": 0.718,
+        "Bd. Lecari": 0.87,
+        "Bd. Bakalan": 0.505,
+        "Bd. Baong": 1.394,
+        "AWLR Kademungan": 0.396,
+        "Bd Guyangan": 0.731,
+        "Sidogiri": 1.486,
+        "Bd. Domas": 1.388,
+        "Klosod": 1.247,
+        "Bd. Grinting": 1.327,
+        "Dhompo": 2.607
+      }
+    },
+    {
+      "timestamp": "2022-11-21T02:30:00",
+      "readings": {
+        "Bd. Suwoto": 1.231,
+        "Krajan Timur": 0.429,
+        "Purwodadi": 0.226,
+        "Bd. Lecari": 0.547,
+        "Bd. Bakalan": 0.621,
+        "Bd. Baong": 0.616,
+        "AWLR Kademungan": 1.331,
+        "Bd Guyangan": 1.427,
+        "Sidogiri": 0.609,
+        "Bd. Domas": 1.414,
+        "Klosod": 0.973,
+        "Bd. Grinting": 1.672,
+        "Dhompo": 1.647
+      }
+    },
+    {
+      "timestamp": "2022-11-21T03:00:00",
+      "readings": {
+        "Bd. Suwoto": 0.618,
+        "Krajan Timur": 0.447,
+        "Purwodadi": 0.649,
+        "Bd. Lecari": 0.489,
+        "Bd. Bakalan": 1.002,
+        "Bd. Baong": 1.647,
+        "AWLR Kademungan": 0.679,
+        "Bd Guyangan": 0.507,
+        "Sidogiri": 1.497,
+        "Bd. Domas": 1.166,
+        "Klosod": 0.455,
+        "Bd. Grinting": 0.371,
+        "Dhompo": 0.774
+      }
+    },
+    {
+      "timestamp": "2022-11-21T03:30:00",
+      "readings": {
+        "Bd. Suwoto": 1.053,
+        "Krajan Timur": 0.992,
+        "Purwodadi": 0.538,
+        "Bd. Lecari": 0.27,
+        "Bd. Bakalan": 0.758,
+        "Bd. Baong": 1.794,
+        "AWLR Kademungan": 0.835,
+        "Bd Guyangan": 1.56,
+        "Sidogiri": 1.319,
+        "Bd. Domas": 0.32,
+        "Klosod": 1.525,
+        "Bd. Grinting": 1.323,
+        "Dhompo": 1.842
+      }
+    },
+    {
+      "timestamp": "2022-11-21T04:00:00",
+      "readings": {
+        "Bd. Suwoto": 0.62,
+        "Krajan Timur": 0.841,
+        "Purwodadi": 0.289,
+        "Bd. Lecari": 0.678,
+        "Bd. Bakalan": 0.844,
+        "Bd. Baong": 1.731,
+        "AWLR Kademungan": 1.251,
+        "Bd Guyangan": 0.569,
+        "Sidogiri": 0.851,
+        "Bd. Domas": 0.604,
+        "Klosod": 1.851,
+        "Bd. Grinting": 1.606,
+        "Dhompo": 1.246
+      }
+    },
+    {
+      "timestamp": "2022-11-21T04:30:00",
+      "readings": {
+        "Bd. Suwoto": 1.067,
+        "Krajan Timur": 0.809,
+        "Purwodadi": 0.322,
+        "Bd. Lecari": 1.039,
+        "Bd. Bakalan": 0.947,
+        "Bd. Baong": 1.468,
+        "AWLR Kademungan": 0.836,
+        "Bd Guyangan": 0.201,
+        "Sidogiri": 0.621,
+        "Bd. Domas": 0.333,
+        "Klosod": 1.879,
+        "Bd. Grinting": 1.618,
+        "Dhompo": 2.579
+      }
+    },
+    {
+      "timestamp": "2022-11-21T05:00:00",
+      "readings": {
+        "Bd. Suwoto": 0.669,
+        "Krajan Timur": 0.258,
+        "Purwodadi": 0.902,
+        "Bd. Lecari": 1.242,
+        "Bd. Bakalan": 0.403,
+        "Bd. Baong": 1.029,
+        "AWLR Kademungan": 0.283,
+        "Bd Guyangan": 1.265,
+        "Sidogiri": 1.196,
+        "Bd. Domas": 0.518,
+        "Klosod": 1.108,
+        "Bd. Grinting": 1.125,
+        "Dhompo": 1.163
+      }
+    },
+    {
+      "timestamp": "2022-11-21T05:30:00",
+      "readings": {
+        "Bd. Suwoto": 1.347,
+        "Krajan Timur": 0.623,
+        "Purwodadi": 0.369,
+        "Bd. Lecari": 0.793,
+        "Bd. Bakalan": 1.176,
+        "Bd. Baong": 0.602,
+        "AWLR Kademungan": 0.574,
+        "Bd Guyangan": 1.593,
+        "Sidogiri": 1.045,
+        "Bd. Domas": 1.045,
+        "Klosod": 1.18,
+        "Bd. Grinting": 0.482,
+        "Dhompo": 1.062
+      }
+    },
+    {
+      "timestamp": "2022-11-21T06:00:00",
+      "readings": {
+        "Bd. Suwoto": 0.706,
+        "Krajan Timur": 0.788,
+        "Purwodadi": 0.384,
+        "Bd. Lecari": 0.442,
+        "Bd. Bakalan": 0.385,
+        "Bd. Baong": 1.247,
+        "AWLR Kademungan": 0.475,
+        "Bd Guyangan": 1.468,
+        "Sidogiri": 1.318,
+        "Bd. Domas": 0.42,
+        "Klosod": 0.705,
+        "Bd. Grinting": 1.303,
+        "Dhompo": 1.036
+      }
+    },
+    {
+      "timestamp": "2022-11-21T06:30:00",
+      "readings": {
+        "Bd. Suwoto": 0.459,
+        "Krajan Timur": 1.136,
+        "Purwodadi": 0.657,
+        "Bd. Lecari": 0.72,
+        "Bd. Bakalan": 1.242,
+        "Bd. Baong": 1.511,
+        "AWLR Kademungan": 0.428,
+        "Bd Guyangan": 0.336,
+        "Sidogiri": 0.76,
+        "Bd. Domas": 1.02,
+        "Klosod": 1.094,
+        "Bd. Grinting": 1.394,
+        "Dhompo": 2.183
+      }
+    },
+    {
+      "timestamp": "2022-11-21T07:00:00",
+      "readings": {
+        "Bd. Suwoto": 1.481,
+        "Krajan Timur": 0.298,
+        "Purwodadi": 0.522,
+        "Bd. Lecari": 0.573,
+        "Bd. Bakalan": 1.334,
+        "Bd. Baong": 0.673,
+        "AWLR Kademungan": 0.428,
+        "Bd Guyangan": 0.828,
+        "Sidogiri": 0.748,
+        "Bd. Domas": 0.774,
+        "Klosod": 0.725,
+        "Bd. Grinting": 1.685,
+        "Dhompo": 1.608
+      }
+    },
+    {
+      "timestamp": "2022-11-21T07:30:00",
+      "readings": {
+        "Bd. Suwoto": 1.334,
+        "Krajan Timur": 0.75,
+        "Purwodadi": 0.24,
+        "Bd. Lecari": 1.299,
+        "Bd. Bakalan": 1.303,
+        "Bd. Baong": 1.753,
+        "AWLR Kademungan": 1.312,
+        "Bd Guyangan": 1.388,
+        "Sidogiri": 0.416,
+        "Bd. Domas": 1.126,
+        "Klosod": 0.663,
+        "Bd. Grinting": 0.902,
+        "Dhompo": 0.647
+      }
+    },
+    {
+      "timestamp": "2022-11-21T08:00:00",
+      "readings": {
+        "Bd. Suwoto": 0.755,
+        "Krajan Timur": 1.185,
+        "Purwodadi": 0.412,
+        "Bd. Lecari": 1.062,
+        "Bd. Bakalan": 0.846,
+        "Bd. Baong": 0.935,
+        "AWLR Kademungan": 1.349,
+        "Bd Guyangan": 1.594,
+        "Sidogiri": 0.922,
+        "Bd. Domas": 1.521,
+        "Klosod": 0.563,
+        "Bd. Grinting": 0.745,
+        "Dhompo": 2.922
+      }
+    },
+    {
+      "timestamp": "2022-11-21T08:30:00",
+      "readings": {
+        "Bd. Suwoto": 0.995,
+        "Krajan Timur": 0.742,
+        "Purwodadi": 0.798,
+        "Bd. Lecari": 0.263,
+        "Bd. Bakalan": 1.001,
+        "Bd. Baong": 1.054,
+        "AWLR Kademungan": 1.223,
+        "Bd Guyangan": 0.42,
+        "Sidogiri": 1.449,
+        "Bd. Domas": 0.436,
+        "Klosod": 0.616,
+        "Bd. Grinting": 1.193,
+        "Dhompo": 2.188
+      }
+    },
+    {
+      "timestamp": "2022-11-21T09:00:00",
+      "readings": {
+        "Bd. Suwoto": 0.582,
+        "Krajan Timur": 0.32,
+        "Purwodadi": 0.912,
+        "Bd. Lecari": 0.471,
+        "Bd. Bakalan": 1.013,
+        "Bd. Baong": 1.229,
+        "AWLR Kademungan": 0.703,
+        "Bd Guyangan": 1.017,
+        "Sidogiri": 0.88,
+        "Bd. Domas": 1.889,
+        "Klosod": 0.647,
+        "Bd. Grinting": 1.374,
+        "Dhompo": 1.097
+      }
+    },
+    {
+      "timestamp": "2022-11-21T09:30:00",
+      "readings": {
+        "Bd. Suwoto": 0.775,
+        "Krajan Timur": 0.872,
+        "Purwodadi": 0.44,
+        "Bd. Lecari": 0.548,
+        "Bd. Bakalan": 1.202,
+        "Bd. Baong": 0.409,
+        "AWLR Kademungan": 0.75,
+        "Bd Guyangan": 1.598,
+        "Sidogiri": 1.495,
+        "Bd. Domas": 0.425,
+        "Klosod": 0.662,
+        "Bd. Grinting": 0.698,
+        "Dhompo": 2.833
+      }
+    },
+    {
+      "timestamp": "2022-11-21T10:00:00",
+      "readings": {
+        "Bd. Suwoto": 1.357,
+        "Krajan Timur": 1.079,
+        "Purwodadi": 0.496,
+        "Bd. Lecari": 0.374,
+        "Bd. Bakalan": 1.3,
+        "Bd. Baong": 1.355,
+        "AWLR Kademungan": 0.934,
+        "Bd Guyangan": 1.582,
+        "Sidogiri": 1.05,
+        "Bd. Domas": 0.313,
+        "Klosod": 1.689,
+        "Bd. Grinting": 0.749,
+        "Dhompo": 2.158
+      }
+    },
+    {
+      "timestamp": "2022-11-21T10:30:00",
+      "readings": {
+        "Bd. Suwoto": 1.427,
+        "Krajan Timur": 0.334,
+        "Purwodadi": 0.292,
+        "Bd. Lecari": 0.318,
+        "Bd. Bakalan": 0.964,
+        "Bd. Baong": 0.709,
+        "AWLR Kademungan": 0.926,
+        "Bd Guyangan": 1.205,
+        "Sidogiri": 0.465,
+        "Bd. Domas": 1.378,
+        "Klosod": 0.749,
+        "Bd. Grinting": 1.033,
+        "Dhompo": 2.763
+      }
+    },
+    {
+      "timestamp": "2022-11-21T11:00:00",
+      "readings": {
+        "Bd. Suwoto": 1.315,
+        "Krajan Timur": 0.292,
+        "Purwodadi": 0.539,
+        "Bd. Lecari": 0.504,
+        "Bd. Bakalan": 0.304,
+        "Bd. Baong": 1.457,
+        "AWLR Kademungan": 0.965,
+        "Bd Guyangan": 0.567,
+        "Sidogiri": 1.164,
+        "Bd. Domas": 1.238,
+        "Klosod": 1.027,
+        "Bd. Grinting": 0.315,
+        "Dhompo": 0.688
+      }
+    },
+    {
+      "timestamp": "2022-11-21T11:30:00",
+      "readings": {
+        "Bd. Suwoto": 1.36,
+        "Krajan Timur": 1.104,
+        "Purwodadi": 0.636,
+        "Bd. Lecari": 1.118,
+        "Bd. Bakalan": 0.999,
+        "Bd. Baong": 0.522,
+        "AWLR Kademungan": 0.353,
+        "Bd Guyangan": 0.632,
+        "Sidogiri": 1.369,
+        "Bd. Domas": 1.653,
+        "Klosod": 1.763,
+        "Bd. Grinting": 1.648,
+        "Dhompo": 1.025
+      }
+    }
+  ]
+}

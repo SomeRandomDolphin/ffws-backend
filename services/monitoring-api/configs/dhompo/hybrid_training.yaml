@@ -1,0 +1,23 @@
+# Fase 3: simulator backbone + korektor residual multi-output.
+
+baseline_config: "multistation_training.yaml"
+simulator_config: "simulator.yaml"
+history_rows: 48
+future_rainfall: zero
+
+residual_model:
+  learning_rate: 0.05
+  max_iter: 150
+  max_depth: 6
+  l2_regularization: 1.0
+  random_state: 42
+
+output:
+  model_dir: "../../models/sklearn/hybrid"
+  report_dir: "../../reports/dhompo/tables"
+  figure_dir: "../../reports/dhompo/figures"
+
+probabilistic_evaluation:
+  scenario_count: 30
+  stride_rows: 12
+  seed: 2026

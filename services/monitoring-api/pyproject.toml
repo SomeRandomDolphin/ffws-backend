@@ -1,0 +1,69 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dhompo"
+version = "0.1.0"
+description = "Multi-horizon water-level prediction research for DAS Dhompo and Surabaya"
+requires-python = ">=3.10"
+dependencies = [
+    "pandas>=2.0",
+    "numpy>=1.24",
+    "scikit-learn>=1.4",
+    "xgboost>=2.0",
+    "mlflow==3.10.1",
+    "fastapi>=0.111",
+    "uvicorn[standard]>=0.29",
+    "pydantic>=2.7",
+    "pyyaml>=6.0",
+    "pymysql>=1.1,<2",
+]
+
+[project.optional-dependencies]
+tuning = [
+    "optuna>=3.5",
+    "lightgbm>=4.0",
+    "catboost>=1.2",
+]
+dev = [
+    "openpyxl>=3.1",
+    "skops",
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "httpx>=0.27",
+    "jupyter>=1.0",
+    "nbformat>=5.9",
+    "nbconvert>=7.0",
+    "matplotlib>=3.8",
+    "seaborn>=0.13",
+    "statsmodels>=0.14",
+    "scipy>=1.12",
+    "optuna>=3.5",
+    "lightgbm>=4.0",
+    "catboost>=1.2",
+]
+
+docs = [
+    "mkdocs-material",
+]
+
+geodata = [
+    "requests>=2.31",
+    "geopandas>=1.0",
+    "shapely>=2.0",
+    "rasterio>=1.3.7",
+    "pyproj>=3.6",
+    "whitebox>=2.3",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+pythonpath = [
+    "src",
+    ".",
+]

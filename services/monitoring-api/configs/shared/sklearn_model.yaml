@@ -1,0 +1,23 @@
+ridge:
+  alpha: 1.0
+
+lasso:
+  alpha: 0.01
+  max_iter: 10000
+
+random_forest:
+  n_estimators: 200
+  max_depth: 15
+  random_state: 42
+
+gradient_boosting:
+  n_estimators: 200
+  max_depth: 5
+  learning_rate: 0.1
+  random_state: 42
+
+xgboost:
+  n_estimators: 200
+  max_depth: 5
+  learning_rate: 0.1
+  random_state: 42

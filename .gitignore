@@ -13,3 +13,13 @@ npm-debug.log
 yarn-error.log
 /.idea
 /.vscode
+/configs/surabaya/database.local.yaml
+/artifacts/
+/api/__pycache__/
+/api/routes/__pycache__/
+/src/dhompo/**/__pycache__/
+/src/dhompo.egg-info/
+/tests/__pycache__/
+/.venv/
+/.pytest_cache/
+**/__pycache__/
