@@ -1,0 +1,234 @@
+name: Build and Publish Container Images
+
+# Builds every service image as linux/amd64, pushes it to the GitHub Container
+# Registry (ghcr.io) and then publishes a deploy branch (deploy/images-<tag>)
+# that records the exact image references, so a release can be rolled out by
+# pinning those tags instead of building on the target host.
+#
+# Images:
+#   ghcr.io/<owner>/<repo>/laravel     - infra/laravel/Dockerfile
+#   ghcr.io/<owner>/<repo>/monitoring  - services/monitoring-api/Dockerfile.monitoring
+#                                        (archive/monitoring only)
+#   ghcr.io/<owner>/<repo>/monitoring-api - same Dockerfile with
+#                                        INSTALL_PREDICTIONS=true, i.e. the full
+#                                        service (monitoring + prediction routes,
+#                                        runtime switch PREDICTIONS_ENABLED)
+#
+# services/monitoring-api/Dockerfile is intentionally not built: it copies only
+# the prediction directories and installs only requirements.txt, while
+# api/main.py imports the `monitoring` package (and xlsxwriter) on startup, so
+# that image cannot boot.
+on:
+  push:
+    branches:
+      - master
+      - main
+    tags:
+      - "v*.*.*"
+  pull_request:
+    branches:
+      - master
+      - main
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Image tag to publish (defaults to sha-<short commit sha>)"
+        required: false
+        type: string
+      deploy_branch:
+        description: "Create the deploy/images-<tag> branch with the pinned image references"
+        required: false
+        type: boolean
+        default: true
+
+concurrency:
+  group: container-images-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  REGISTRY: ghcr.io
+  PLATFORMS: linux/amd64
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-and-push:
+    name: Build ${{ matrix.service }} (linux/amd64)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: laravel
+            context: .
+            dockerfile: infra/laravel/Dockerfile
+          - service: monitoring
+            context: services/monitoring-api
+            dockerfile: services/monitoring-api/Dockerfile.monitoring
+            buildArgs: INSTALL_PREDICTIONS=false
+          - service: monitoring-api
+            context: services/monitoring-api
+            dockerfile: services/monitoring-api/Dockerfile.monitoring
+            buildArgs: INSTALL_PREDICTIONS=true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to ${{ env.REGISTRY }}
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Resolve image name and tag
+        id: image
+        env:
+          TAG_OVERRIDE: ${{ inputs.image_tag }}
+        run: |
+          set -euo pipefail
+          # OCI image references must be lowercase.
+          repository="${GITHUB_REPOSITORY,,}"
+
+          tag="${TAG_OVERRIDE:-}"
+          if [ -z "$tag" ]; then
+            tag="sha-$(git rev-parse --short=7 HEAD)"
+          fi
+          # Keep the tag/branch safe for refs (e.g. "v1.0.0/rc1" -> "v1.0.0-rc1").
+          tag="$(printf '%s' "$tag" | tr -c 'a-zA-Z0-9._-' '-')"
+
+          echo "name=${REGISTRY}/${repository}/${{ matrix.service }}" >> "$GITHUB_OUTPUT"
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+          echo "ref=${REGISTRY}/${repository}/${{ matrix.service }}:${tag}" >> "$GITHUB_OUTPUT"
+
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ steps.image.outputs.name }}
+          tags: |
+            type=raw,value=${{ steps.image.outputs.tag }}
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push (linux/amd64)
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          platforms: ${{ env.PLATFORMS }}
+          build-args: ${{ matrix.buildArgs }}
+          # Pull requests only validate the build, they never publish.
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+          # Keep the output a plain single-platform manifest instead of an
+          # OCI index with attestation manifests attached.
+          provenance: false
+
+      - name: Summary
+        run: |
+          {
+            echo "### \`${{ matrix.service }}\`"
+            echo ""
+            echo "| | |"
+            echo "| --- | --- |"
+            echo "| Image | \`${{ steps.image.outputs.ref }}\` |"
+            echo "| Dockerfile | \`${{ matrix.dockerfile }}\` |"
+            echo "| Platform | \`${{ env.PLATFORMS }}\` |"
+            echo "| Pushed | \`${{ github.event_name != 'pull_request' }}\` |"
+            echo "| Digest | \`${{ steps.build.outputs.digest }}\` |"
+            echo ""
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  publish-deploy-branch:
+    name: Publish deploy branch
+    needs: build-and-push
+    # Never runs for pull requests; on manual runs it can be skipped.
+    if: >-
+      github.event_name != 'pull_request' &&
+      (github.event_name != 'workflow_dispatch' || inputs.deploy_branch)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+
+      - name: Write the pinned image references
+        id: images
+        env:
+          TAG_OVERRIDE: ${{ inputs.image_tag }}
+        run: |
+          set -euo pipefail
+          repository="${GITHUB_REPOSITORY,,}"
+          tag="${TAG_OVERRIDE:-}"
+          if [ -z "$tag" ]; then
+            tag="sha-$(git rev-parse --short=7 HEAD)"
+          fi
+          tag="$(printf '%s' "$tag" | tr -c 'a-zA-Z0-9._-' '-')"
+
+          mkdir -p deploy
+          {
+            echo "# Generated by .github/workflows/build-and-publish.yml - do not edit by hand."
+            echo "# Commit: ${GITHUB_SHA}"
+            echo "# Tag:    ${tag}"
+            echo "#"
+            echo "# Roll these images out with: set -a && . deploy/images.env && set +a"
+            echo "# MONITORING_IMAGE     - archive/monitoring service only"
+            echo "# MONITORING_API_IMAGE - monitoring + prediction routes (gate with PREDICTIONS_ENABLED)"
+            echo "LARAVEL_IMAGE=${REGISTRY}/${repository}/laravel:${tag}"
+            echo "MONITORING_API_IMAGE=${REGISTRY}/${repository}/monitoring-api:${tag}"
+            echo "MONITORING_IMAGE=${REGISTRY}/${repository}/monitoring:${tag}"
+          } > deploy/images.env
+
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+          echo "branch=deploy/images-${tag}" >> "$GITHUB_OUTPUT"
+          cat deploy/images.env
+
+      - name: Create and push the new branch
+        env:
+          BRANCH: ${{ steps.images.outputs.branch }}
+          TAG: ${{ steps.images.outputs.tag }}
+        run: |
+          set -euo pipefail
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git checkout -B "$BRANCH"
+          git add deploy/images.env
+
+          if git diff --cached --quiet; then
+            echo "deploy/images.env already pins ${TAG}"
+          else
+            git commit -m "chore(deploy): pin images to ${TAG}"
+          fi
+
+          # The branch is fully owned by this workflow, so re-runs replace it.
+          git push --force origin "$BRANCH"
+
+      - name: Summary
+        run: |
+          {
+            echo "### Deployment branch"
+            echo ""
+            echo "\`${{ steps.images.outputs.branch }}\` pins \`deploy/images.env\` to"
+            echo "tag \`${{ steps.images.outputs.tag }}\`."
+          } >> "$GITHUB_STEP_SUMMARY"
