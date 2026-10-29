@@ -2,6 +2,16 @@
 
 Backend services for water-level monitoring, historical observations, and monthly data exports in the Welang River Basin and Surabaya.
 
+## Monitoring terpusat dengan Supabase
+
+Mode `supabase_compact` menyimpan agregat pengamatan, riwayat prediksi, dan evaluasi di PostgreSQL Supabase pada schema `ffws_monitoring`. MySQL tetap menjadi sumber sensor baca-saja; API/worker mode ini tidak memerlukan SQLite lokal. Data mentah Surabaya dibaca langsung dari MySQL untuk model dan Excel.
+
+- [Panduan Supabase, konfigurasi, deployment, monitoring, dan backup](services/monitoring-api/README.central.md)
+- [Prediksi internal dan evaluasi](services/monitoring-api/README.shadow.md)
+- [Mode arsip monitoring lama](services/monitoring-api/README.monitoring.md)
+
+Bagian arsip dan ekspor tahunan di bawah menjelaskan jalur lama; mode pusat memakai agregat 5 menit serta unduhan berdasarkan rentang tanggal. Backend dan worker tetap harus berjalan pada hosting agar proses tidak bergantung pada laptop.
+
 ## Overview
 
 The backend combines the existing Laravel application with a separate FastAPI monitoring service. Laravel retains its authentication, station management, contacts, imports, and historical endpoints. FastAPI serves station observations from a persistent monitoring archive.
@@ -59,17 +69,17 @@ The monitoring archive is separate from both the Laravel database and sensor dat
 
 ```text
 backend/
-├── app/                        # Laravel application
-├── config/                     # Laravel configuration and feature flags
-├── database/                   # Laravel migrations and seeders
-├── routes/                     # Existing application routes
-├── infra/laravel/              # Laravel container setup
-└── services/monitoring-api/
-    ├── api/                    # Active FastAPI entrypoint
-    ├── monitoring/             # Collection, queries, archive and exports
-    ├── configs/surabaya/       # Source connections and sensor references
-    ├── imports/history/        # Welang CSV and Excel inputs
-    └── monitoring_tests/       # Archive integration tests
+â”œâ”€â”€ app/                        # Laravel application
+â”œâ”€â”€ config/                     # Laravel configuration and feature flags
+â”œâ”€â”€ database/                   # Laravel migrations and seeders
+â”œâ”€â”€ routes/                     # Existing application routes
+â”œâ”€â”€ infra/laravel/              # Laravel container setup
+â””â”€â”€ services/monitoring-api/
+    â”œâ”€â”€ api/                    # Active FastAPI entrypoint
+    â”œâ”€â”€ monitoring/             # Collection, queries, archive and exports
+    â”œâ”€â”€ configs/surabaya/       # Source connections and sensor references
+    â”œâ”€â”€ imports/history/        # Welang CSV and Excel inputs
+    â””â”€â”€ monitoring_tests/       # Archive integration tests
 ```
 
 Run the monitoring service from `services/monitoring-api`. The root-level Python directories contain earlier prediction code and are not the active monitoring entrypoint.

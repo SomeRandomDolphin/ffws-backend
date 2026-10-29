@@ -124,7 +124,7 @@ def import_excel(db, path):
                         station + ":" + observed.isoformat(),
                         "unverified" if unit == "cm" else "confirmed_by_owner"))
                 count += 1
-                if len(batch) >= 400:
+                if len(batch) >= (4000 if db.dialect.name == "postgresql" else 400):
                     save_readings(db, batch)
                     batch.clear()
             except (ValueError, TypeError, IndexError, OverflowError):
