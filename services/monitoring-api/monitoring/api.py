@@ -99,6 +99,51 @@ def get_job(job_id):
         raise HTTPException(404, "File tidak ditemukan atau sudah kedaluwarsa")
     return job
 
+
+@router.get("/v1/stations/{station}/export-range")
+def export_range(station: str, hours: int = Query(24, ge=1, le=168), sensor: str | None = None, start: datetime | None = None, end: datetime | None = None):
+    import tempfile
+    import xlsxwriter
+    from pathlib import Path
+    from starlette.background import BackgroundTask
+    from monitoring.store import observations as obs, WIB
+    require_station(station)
+    db = database()
+    end = timestamp(end) if end is not None else latest_time(db, station, sensor=sensor)
+    if end is None:
+        raise HTTPException(409, "Belum ada data untuk diunduh")
+    start = timestamp(start) if start is not None else end - timedelta(hours=hours)
+    if start > end:
+        raise HTTPException(422, "Tanggal mulai harus sebelum tanggal akhir")
+    EXPORT_DIR.mkdir(parents=True, exist_ok=True)
+    handle, filename = tempfile.mkstemp(suffix=".xlsx", dir=EXPORT_DIR)
+    os.close(handle)
+    path = Path(filename)
+    try:
+        with xlsxwriter.Workbook(str(path), {"constant_memory": True, "strings_to_formulas": False, "strings_to_urls": False}) as book:
+            sheet = book.add_worksheet("Data pengamatan")
+            date_format = book.add_format({"num_format": "dd mmm yyyy hh:mm:ss"})
+            sheet.write_row(0, 0, ["Waktu (WIB)", "Sensor", "Parameter", "Nilai", "Satuan"])
+            sheet.freeze_panes(1, 0)
+            sheet.set_column(0, 0, 24)
+            sheet.set_column(1, 4, 20)
+            with db.connect() as conn:
+                rows = conn.execute(select(obs).where(obs.c.station == station,
+                    obs.c.observed_at >= start, obs.c.observed_at <= end)
+                    .order_by(obs.c.observed_at, obs.c.id)).mappings()
+                for index, row in enumerate(rows, 1):
+                    if index >= 1048576:
+                        raise HTTPException(413, "Data terlalu besar; pilih rentang lebih pendek")
+                    local = row["observed_at"].replace(tzinfo=__import__('datetime').timezone.utc).astimezone(WIB).replace(tzinfo=None)
+                    sheet.write_datetime(index, 0, local, date_format)
+                    sheet.write_row(index, 1, [row["sensor"], row["metric"], row["value"], "mm" if row["metric"] == "rainfall" and row["sensor"] != "jumlah_tip" else row["unit"]])
+    except Exception:
+        path.unlink(missing_ok=True)
+        raise
+    return FileResponse(path, filename=f"{station}_{hours}jam.xlsx",
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        background=BackgroundTask(path.unlink, missing_ok=True))
+
 @router.get("/v1/exports/{job_id}")
 def export_status(job_id: str):
     job = get_job(job_id)

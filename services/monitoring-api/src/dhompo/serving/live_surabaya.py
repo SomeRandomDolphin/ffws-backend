@@ -266,7 +266,7 @@ class LiveSurabaya:
             latest = rows[-1] if rows else None
             age = (now - timestamp(latest["time"])).total_seconds() if latest else None
             state = ("unavailable" if latest is None else "future" if age < -60
-                     else "stale" if age > 600 else "live")
+                     else "stale" if age > 86400 else "live")
             source_ok = key in self.last_success and key not in self.errors
             if not source_ok and state == "live":
                 state = "cached"
@@ -337,7 +337,7 @@ class LiveSurabaya:
         # Recompute freshness on every read, even if the worker has stopped.
         now = datetime.now(WIB)
         for station in result["stations"]:
-            if station["observedAt"] and (now - timestamp(station["observedAt"])).total_seconds() > 600:
+            if station["observedAt"] and (now - timestamp(station["observedAt"])).total_seconds() > 86400:
                 station["state"] = "stale"
                 for sensor in station["sensors"]:
                     sensor["forecast"] = {"method": "unavailable", "issuedAt": None, "points": [],

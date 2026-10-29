@@ -67,6 +67,30 @@ def history(db, station, start, end, max_points=2000, sensor=None):
     return {"station": station, "from": iso(start), "to": iso(end), "series": format_series(rows, station, max_points)}
 
 def latest_series(db, station):
+    if db.dialect.name == "sqlite":
+        # Seek between signals instead of scanning the full station archive.
+        rows = []
+        previous = None
+        with db.connect() as conn:
+            while True:
+                query = select(obs.c.sensor, obs.c.metric).where(obs.c.station == station)
+                signal = None
+                if previous is not None:
+                    signal = conn.execute(query.where(obs.c.sensor == previous[0],
+                        obs.c.metric > previous[1]).order_by(obs.c.metric).limit(1)).first()
+                    query = query.where(obs.c.sensor > previous[0])
+                if signal is None:
+                    signal = conn.execute(query.order_by(obs.c.sensor, obs.c.metric).limit(1)).first()
+                if signal is None:
+                    break
+                previous = tuple(signal)
+                row = conn.execute(select(obs).where(
+                    obs.c.station == station, obs.c.sensor == signal.sensor,
+                    obs.c.metric == signal.metric).order_by(
+                        obs.c.observed_at.desc(), obs.c.id.desc()).limit(1)).mappings().first()
+                if row is not None:
+                    rows.append(row)
+        return format_series(rows, station)
     # Include the full index prefix in GROUP BY so MySQL can skip directly
     # between signals rather than scanning every historical reading.
     latest = select(obs.c.station, obs.c.sensor, obs.c.metric,
@@ -85,11 +109,43 @@ def snapshot(db, station_id, include_history=False):
     latest = latest_time(db, station_id)
     data = history(db, station_id, latest - timedelta(hours=24), latest) if latest and include_history else {"series": latest_series(db, station_id) if latest else []}
     with db.connect() as conn:
-        source_names = conn.execute(select(obs.c.source).where(obs.c.station == station_id).group_by(obs.c.station, obs.c.source)).scalars().all()
+        if db.dialect.name == "sqlite":
+            source_names = []
+            while True:
+                query = select(obs.c.source).where(obs.c.station == station_id)
+                if source_names:
+                    query = query.where(obs.c.source > source_names[-1])
+                source = conn.execute(query.order_by(obs.c.source).limit(1)).scalar()
+                if source is None:
+                    break
+                source_names.append(source)
+        else:
+            source_names = conn.execute(select(obs.c.source).where(obs.c.station == station_id).group_by(obs.c.station, obs.c.source)).scalars().all()
         states = conn.execute(select(sources).where(sources.c.id.in_(source_names))).mappings().all() if source_names else []
     source_states = [{"id": s["id"], "lastSuccess": iso(s["last_success"]), "error": s["error"]} for s in states]
-    state = "unavailable" if latest is None else "historical" if all(s.startswith("excel:") for s in source_names) else "stale" if now() - latest > timedelta(minutes=10) else "live"
+    state = "unavailable" if latest is None else "historical" if all(s.startswith("excel:") for s in source_names) else "stale" if now() - latest > timedelta(hours=24) else "live"
     if state == "live" and any(s["error"] for s in source_states):
         state = "cached"
     return {**station, "observedAt": iso(latest), "state": state,
-            "sources": source_states, "series": data["series"]}
+            "sources": source_states, "series": data["series"], "sensors": sensor_catalog(station_id, data["series"])}
+
+
+def sensor_catalog(station_id, series):
+    from monitoring.catalog import live_config
+    result = {(s["sensor"], s["metric"]): {**s, "points": []} for s in series}
+    for location in live_config()["locations"]:
+        if location["key"] != station_id:
+            continue
+        groups = [("water", location["water_level"])]
+        if location.get("rainfall"):
+            groups.append(("rain", location["rainfall"]))
+        groups += [("telemetry", item) for item in location.get("telemetry", [])]
+        for kind, spec in groups:
+            for column in spec["columns"]:
+                meta = measurement(station_id, column) if kind == "water" else {"metric": "rainfall" if kind == "rain" else column, "unit": "unverified", "verification": "unverified"}
+                key = (column, meta["metric"])
+                result.setdefault(key, {"sensor": column, **meta, "points": []})
+    if station_id.startswith("welang-") and not result:
+        metric = "rainfall" if station_id.startswith("welang-rain-") else "water_level"
+        result[(metric, metric)] = {"sensor": metric, "metric": metric, "unit": "mm" if metric == "rainfall" else "m", "verification": "unverified", "points": []}
+    return list(result.values())
