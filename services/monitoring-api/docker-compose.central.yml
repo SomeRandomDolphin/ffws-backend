@@ -1,0 +1,25 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.monitoring
+    env_file: .env.supabase.local
+    environment:
+      MONITORING_STORAGE: supabase_compact
+      SHADOW_FORECAST_ENABLED: "true"
+      EXPORT_DIR: /tmp/ffws-exports
+    command: ["sh", "-c", "python -m monitoring.worker init && exec uvicorn api.main:app --host 0.0.0.0 --port 8000"]
+    ports: ["127.0.0.1:8000:8000"]
+    restart: unless-stopped
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.monitoring
+    env_file: .env.supabase.local
+    environment:
+      MONITORING_STORAGE: supabase_compact
+      SHADOW_FORECAST_ENABLED: "true"
+      EXPORT_DIR: /tmp/ffws-exports
+      WELANG_IMPORT_PATH: /app/imports/history
+    command: ["python", "-m", "monitoring.worker", "run"]
+    restart: unless-stopped

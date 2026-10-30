@@ -1,5 +1,7 @@
 # Monitoring archive
 
+Dokumen ini menjelaskan **mode arsip lama**. Untuk mode aktif Supabase ringkas tanpa SQLite, gunakan [README.central.md](README.central.md). Aturan retensi, grafik, dan ekspor berbeda antara kedua mode.
+
 Laravel remains at the backend repository root. FastAPI is restored from the migration branch into this separate service.
 
 ## Components
@@ -14,8 +16,8 @@ Surabaya source credentials remain read-only in `configs/surabaya/database.local
 
 Dua file CSV sementara dengan header dan urutan stasiun yang sama disimpan di `imports/history/` dan dimuat ke arsip Welang oleh worker:
 
-- `welang-2022.csv`: 1 Oktober–5 Desember 2022 (3.135 baris waktu)
-- `welang-2023.csv`: 1 Januari–14 Maret 2023 (3.481 baris waktu)
+- `welang-2022.csv`: 1 Oktoberâ€“5 Desember 2022 (3.135 baris waktu)
+- `welang-2023.csv`: 1 Januariâ€“14 Maret 2023 (3.481 baris waktu)
 
 Keduanya memakai kolom `Datetime` lalu 15 stasiun dengan nama kanonis. Data sumber XLSX memiliki satu kolom `Curah hujan` tanpa identitas pos yang jelas; kolom itu tidak dimasukkan. Nilai muka air disimpan sebagai cm mentah dan disajikan sebagai meter pada endpoint grafik. Timestamp tanpa offset dianggap WIB. Data ini belum diverifikasi dan tidak mengisi rentang waktu yang kosong.
 

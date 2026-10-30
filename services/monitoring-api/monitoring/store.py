@@ -5,6 +5,7 @@ from sqlalchemy import (create_engine, MetaData, Table, Column, String, Integer,
                         Float, DateTime, Text, UniqueConstraint, Index, select, text)
 from sqlalchemy.dialects.mysql import insert as mysql_insert
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
+from sqlalchemy.dialects.postgresql import insert as postgres_insert
 
 metadata = MetaData()
 observations = Table(
@@ -65,12 +66,45 @@ def timestamp(value):
 def iso(value):
     return value.replace(tzinfo=timezone.utc).astimezone(WIB).isoformat() if value else None
 
+def cloud_mode():
+    return os.getenv("MONITORING_STORAGE", "archive") == "supabase_compact"
+
 def engine(url=None):
+    if url is None and cloud_mode():
+        from sqlalchemy.engine import URL
+        from sqlalchemy import event
+        from pathlib import Path
+        settings={}
+        path=Path(os.environ.get("MONITORING_SUPABASE_CONFIG", ".env.supabase.local"))
+        if path.is_file():
+            for line in path.read_text(encoding="utf-8-sig").splitlines():
+                if line.strip() and not line.lstrip().startswith("#") and "=" in line:
+                    k,v=line.split("=",1); settings[k.strip()]=v.strip()
+        def setting(name, default=None): return os.getenv(name,settings.get(name,default))
+        url=URL.create("postgresql+psycopg",username=setting("SUPABASE_DB_USER"),password=setting("SUPABASE_DB_PASSWORD"),
+            host=setting("SUPABASE_DB_HOST"),port=int(setting("SUPABASE_DB_PORT","5432")),database=setting("SUPABASE_DB_NAME","postgres"),
+            query={"sslmode":"require","connect_timeout":"15"})
+        db=create_engine(url,pool_pre_ping=True,pool_size=3,max_overflow=2)
+        @event.listens_for(db,"connect")
+        def set_schema(connection, record):
+            old=connection.autocommit; connection.autocommit=True
+            with connection.cursor() as cursor: cursor.execute("SET search_path TO ffws_monitoring")
+            connection.autocommit=old
+        return db
     return create_engine(url or os.environ["ARCHIVE_DATABASE_URL"], pool_pre_ping=True)
 
 def initialize(db):
+    if cloud_mode():
+        from monitoring import cloud, shadow
     # Only the dedicated archive schema is touched. Existing Laravel tables are not migrated.
+    if db.dialect.name == "postgresql" and cloud_mode():
+        with db.begin() as conn:
+            conn.execute(text("CREATE SCHEMA IF NOT EXISTS ffws_monitoring"))
+            conn.execute(text("REVOKE ALL ON SCHEMA ffws_monitoring FROM PUBLIC, anon, authenticated"))
     metadata.create_all(db)
+    if db.dialect.name == "postgresql" and cloud_mode():
+        with db.begin() as conn:
+            conn.execute(text("ALTER TABLE aggregate_stats ADD COLUMN IF NOT EXISTS median_distance DOUBLE PRECISION"))
     with db.connect() as conn:
         conn.execute(text("SELECT 1"))
 
@@ -83,6 +117,10 @@ def upsert(db, table, rows, key_columns=()):
             stmt = stmt.on_duplicate_key_update(**{
                 c.name: stmt.inserted[c.name] for c in table.c if not c.primary_key and c.name in rows[0]
             })
+        elif db.dialect.name == "postgresql":
+            stmt = postgres_insert(table).values(rows)
+            stmt = stmt.on_conflict_do_update(index_elements=list(key_columns),
+                set_={c.name: getattr(stmt.excluded,c.name) for c in table.c if not c.primary_key and c.name in rows[0]})
         elif db.dialect.name == "sqlite":
             stmt = sqlite_insert(table).values(rows)
             stmt = stmt.on_conflict_do_update(
@@ -94,8 +132,13 @@ def upsert(db, table, rows, key_columns=()):
         conn.execute(stmt)
 
 def save_readings(db, rows):
-    for offset in range(0, len(rows), 100):
-        upsert(db, observations, rows[offset:offset + 100], ("source", "record_key", "sensor", "metric"))
+    if cloud_mode() and any(row["station"].startswith("lokasi_") for row in rows):
+        raise RuntimeError("Raw Surabaya writes are disabled in compact cloud mode")
+    if db.dialect.name == "postgresql":
+        rows=list({(r["source"],r["record_key"],r["sensor"],r["metric"]):r for r in rows}.values())
+    batch_size=1000 if db.dialect.name == "postgresql" else 100
+    for offset in range(0, len(rows), batch_size):
+        upsert(db, observations, rows[offset:offset + batch_size], ("source", "record_key", "sensor", "metric"))
 
 def set_source(db, source_id, **values):
     with db.begin() as conn:

@@ -102,7 +102,7 @@ def run_export(db, job):
     heading = workbook.add_format({"bold": True, "bg_color": "#17324D", "font_color": "white"})
     date_format = workbook.add_format({"num_format": "yyyy-mm-dd hh:mm:ss"})
     number_format = workbook.add_format({"num_format": "0.000"})
-    headers = ["Waktu pengamatan (WIB)", "Sensor", "Parameter", "Nilai asli", "Satuan", "Diterima (WIB)"]
+    headers = ["Waktu pengamatan (WIB)", "Sensor", "Parameter", "Nilai", "Satuan", "Diterima (WIB)"]
     months = [shift_month(first_month, offset) for offset in range(12)]
 
     def new_sheet(month, part):
@@ -145,7 +145,7 @@ def run_export(db, job):
                 state["sheet"].write_row(row, 1, [item["sensor"], item["metric"]])
                 if item["value"] is not None:
                     state["sheet"].write_number(row, 3, item["value"], number_format)
-                state["sheet"].write(row, 4, item["unit"])
+                state["sheet"].write(row, 4, "mm" if item["metric"] == "rainfall" and item["sensor"] != "jumlah_tip" else item["unit"])
                 state["sheet"].write_datetime(row, 5, received, date_format)
                 state["row"] += 1
         for state in states:

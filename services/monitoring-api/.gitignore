@@ -13,3 +13,4 @@ imports/history/*
 exports/
 artifacts/
 models/**/*.pkl
+.env.supabase.local
