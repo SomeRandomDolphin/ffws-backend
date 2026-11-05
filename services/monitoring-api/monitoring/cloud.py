@@ -127,10 +127,12 @@ def sync(db,force=False):
                 latest=cursor.fetchone()
             if not latest: continue
             state=read_source(db,source); previous=json.loads(state.get('detail') or '{}')
-            if not force and previous.get('compact_id')==latest[0] and previous.get('aggregation_version')=='median-v2':
+            signals=sorted([station,column] for station,column in group['signals'])
+            compatible=previous.get('aggregation_version')=='median-v2' and previous.get('signals')==signals
+            if not force and previous.get('compact_id')==latest[0] and compatible:
                 set_source(db,source,last_success=now(),error=None); continue
             end=min(floor5(timestamp(latest[1])),floor5(now()))
-            previous_end=previous.get('compact_end') if not force and previous.get('aggregation_version')=='median-v2' else None
+            previous_end=previous.get('compact_end') if not force and compatible else None
             start=max(end-timedelta(days=7),__import__('datetime').datetime.fromisoformat(previous_end)-timedelta(minutes=5)) if previous_end else end-timedelta(days=7)
             all_rows=[]
             for station in {st for st,col in group['signals']}:
@@ -145,7 +147,7 @@ def sync(db,force=False):
                     conn.execute(delete(observations).where(observations.c.station==station,observations.c.source==source,observations.c.observed_at<end-timedelta(days=30)))
                     for st,col in group['signals']:
                         if st==station: conn.execute(delete(stats).where(stats.c.station==st,stats.c.sensor==col,stats.c.bucket<end-timedelta(days=30)))
-            set_source(db,source,cursor=latest[0],last_success=now(),error=None,detail=json.dumps({'compact_id':latest[0],'compact_end':end.isoformat(),'interval_seconds':300,'aggregation_version':'median-v2'}))
+            set_source(db,source,cursor=latest[0],last_success=now(),error=None,detail=json.dumps({'compact_id':latest[0],'compact_end':end.isoformat(),'interval_seconds':300,'aggregation_version':'median-v2','signals':signals}))
         except Exception:
             set_source(db,source,error='Sinkronisasi agregat MySQL belum berhasil; data tersimpan tetap tersedia.')
             import logging; logging.getLogger(__name__).exception('Compact source sync failed: %s',source)
