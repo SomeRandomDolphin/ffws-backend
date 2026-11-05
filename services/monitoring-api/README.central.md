@@ -101,6 +101,25 @@ Nilai process environment mengalahkan file konfigurasi. Jangan menaruh password 
 
 ### Docker/hosting
 
+Saat menambah kolom sensor, deploy konfigurasi `configs/surabaya/live_sources.yaml`
+bersama kode API dan worker. Untuk Hang Tuah, `dbpvwemon.esp2` menyertakan
+`humi` (kelembaban udara) dan `baro` (tekanan udara); satuannya tetap belum
+terverifikasi. Nilai nol sumber dipertahankan.
+
+Worker menyimpan daftar pasangan stasiun/kolom dalam checkpoint. Perubahan
+daftar itu memicu pembacaan ulang jendela bootstrap tujuh hari, termasuk saat
+ID terakhir perangkat tidak berubah. Checkpoint lama tanpa daftar kolom juga
+di-bootstrap ulang sekali. Siklus pertama setelah pembaruan dapat lebih lama.
+Restart API dan satu worker pusat agar konfigurasi yang di-cache dimuat ulang;
+jangan menjalankan worker kedua atau mengabaikan advisory lock.
+
+Setelah deploy, periksa `/health` dan
+`/v1/stations/lokasi_1_hang_tuah/snapshot`: `series` harus berisi pembacaan
+`humi` dan `baro`, bukan hanya entri katalog `sensors`. Periksa juga
+`/v1/stations/lokasi_1_hang_tuah/history?hours=24&sensor=humi` dan versi
+`sensor=baro`, lalu pastikan grafik frontend tampil melalui reverse proxy
+`/tsipil/informasibanjir/ffws/monitoring-api` pada hosting dengan subpath ITS.
+
 ```sh
 docker compose -f docker-compose.central.yml up -d --build
 ```

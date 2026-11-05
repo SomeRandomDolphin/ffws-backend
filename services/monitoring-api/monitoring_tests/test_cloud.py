@@ -1,6 +1,43 @@
 from datetime import datetime,timedelta
 from monitoring.cloud import aggregate_records
 
+
+def test_new_telemetry_backfills_when_upstream_id_is_unchanged(monkeypatch):
+ import json
+ from monitoring import cloud
+ from monitoring.store import engine,initialize,set_source,read_source,WIB
+ db=engine('sqlite://');initialize(db)
+ station='lokasi_1_hang_tuah';source='mysql:dbpvwemon.esp2'
+ end=cloud.floor5(cloud.now())-timedelta(minutes=5)
+ group={'database':'dbpvwemon','spec':{'table':'esp2','id_column':'id','timestamp_column':'time'},
+        'signals':{(station,'windavg'):{},(station,'humi'):{},(station,'baro'):{}}}
+ set_source(db,source,detail=json.dumps({'compact_id':123,'compact_end':end.isoformat(),
+     'aggregation_version':'median-v2','signals':[[station,'windavg']]}))
+ class Cursor:
+  def __enter__(self): return self
+  def __exit__(self,*args): pass
+  def execute(self,*args): pass
+  def fetchone(self):
+   from datetime import timezone
+   return (123,end.replace(tzinfo=timezone.utc).astimezone(WIB).replace(tzinfo=None))
+ class Connection:
+  def cursor(self): return Cursor()
+  def close(self): pass
+ calls=[]
+ def rows(station,start,finish,source_only=None):
+  calls.append((start,finish));return []
+ monkeypatch.setattr(cloud,'source_groups',lambda:{source:group})
+ monkeypatch.setattr(cloud,'connection',Connection)
+ monkeypatch.setattr(cloud,'raw_records',rows)
+ cloud.sync(db)
+ assert calls==[(end-timedelta(days=7,hours=12),end)]
+ detail=json.loads(read_source(db,source)['detail'])
+ assert detail['signals']==sorted([[station,col] for col in ('windavg','humi','baro')])
+ calls.clear()
+ cloud.sync(db)
+ assert calls==[]  # The same config and source ID still skip redundant reads.
+ db.dispose()
+
 def test_aggregation_preserves_raw_scale_counts_and_excludes_open_bin():
  t=datetime(2026,1,1)
  def row(i,v): return dict(id=i,station='lokasi_1_hang_tuah',sensor='distance',metric='water_level',observed_at=t+timedelta(seconds=30*i),received_at=t,value=v,unit='cm',source='mysql:test',verification='unverified')

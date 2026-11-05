@@ -14,3 +14,5 @@ exports/
 artifacts/
 models/**/*.pkl
 .env.supabase.local
+
+local-sensor-preview.sqlite*

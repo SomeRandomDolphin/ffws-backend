@@ -37,7 +37,7 @@ locations:
       - table: esp2
         id_column: id
         timestamp_column: time
-        columns: [windir, windavg, windmax]
+        columns: [windir, windavg, windmax, humi, baro]
       - table: esp3
         id_column: id
         timestamp_column: time
